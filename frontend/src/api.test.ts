@@ -124,3 +124,30 @@ describe('getCoverUrl', () => {
     expect(api.getCoverUrl(7)).toBe('/api/albums/7/cover')
   })
 })
+
+describe('getCoverBlob', () => {
+  it('fetches the cached cover with the bearer token and returns a blob', async () => {
+    setToken('tok123')
+    const blob = new Blob(['jpeg-bytes'], { type: 'image/jpeg' })
+    vi.mocked(fetch).mockResolvedValue(new Response(blob, { status: 200 }))
+
+    const result = await api.getCoverBlob(7)
+    expect(result).not.toBeNull()
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/albums/7/cover',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer tok123' }),
+      }),
+    )
+  })
+
+  it('returns null when the cover is missing', async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 404 }))
+    await expect(api.getCoverBlob(7)).resolves.toBeNull()
+  })
+
+  it('returns null on network failure', async () => {
+    vi.mocked(fetch).mockRejectedValue(new TypeError('NetworkError'))
+    await expect(api.getCoverBlob(7)).resolves.toBeNull()
+  })
+})

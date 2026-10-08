@@ -251,3 +251,50 @@ shipped, decisions made, anything the next agent needs to know.
   the other suite to finish and re-running (no conftest/DB-name changes).
   `pytest.ini` already sets `-q`, so don't add another `-q` (it suppresses the
   summary line via `-qq`).
+
+## 2026-10-08 — Issue #5 shelf & detail UI — agent-shelf-5
+
+- Shipped all four §7 feature pages in place (placeholders replaced): `ShelfPage`
+  (responsive cover grid, instant client-side title/artist filter, server-side
+  tag/favorite/sort + paging, `?tag=` deep link, empty-state CTA to `/add`),
+  `AlbumDetailPage` (large cover, metadata + source badge, tracklist table with
+  m:ss + total runtime footer, tag editor, "I spun this" + play history with
+  delete, note editor, favorite toggle, inline-confirm remove, loading/404/error
+  states), `AddAlbumPage` (300 ms debounced merged-search with source badges +
+  cover thumbs, per-row import pending → "On your shelf" link, 409 → link to the
+  existing album via `(id=N)` detail parsing, provider errors inline with retry,
+  MB/Deezer attribution), `FindPage` (one debounced box → songs via
+  `searchTracks`, albums via `listAlbums({q})`, client-filtered tags from
+  `getTags` linking to `/?tag=…`). All fetches through `api.ts`, types from
+  `types.ts`, no CSS framework; CSS appended to `styles.css` (new shelf/detail/
+  search/chips/table section, reuses #4 variables, responsive at 640 px).
+- **Filtering decision (shared components for #6/#8):** shelf text filter =
+  instant client-side over a fully-paged list (`limit=500` loop until short
+  page, 20-page safety cap); tag/favorite/sort = server params via refetch.
+  Read-only accounts (`canEdit` false) get disabled write controls everywhere.
+- Extracted shared components → `src/components/`: `AlbumCard` (title/artist·
+  year, tag chips, lazy cover, star toggle; used by Shelf **and** Find),
+  `CoverImage`, `SourceBadge`, `TagEditor`, plus `src/format.ts`
+  (`formatDuration`, `formatRuntime`, `sumDurations`, `timeAgo`, `formatDate`).
+  **#6 will likely want `AlbumCard` + `timeAgo`; #8 should audit the chip/table/
+  empty-state styles and the 640 px breakpoints.**
+- ⚠ **Cover-art contract note (no PLAN change):** the backend's
+  `GET /api/albums/{id}/cover` is auth-gated (`get_current_user`), so a bare
+  `<img>` can't load it. Added one API method — `api.getCoverBlob(id) -> Blob |
+  null` (extends `api.ts`; nothing renamed) — and `CoverImage` fetches the
+  cached cover through it, then falls back to `cover_url` → placeholder. Page
+  test mocks ship `getCoverBlob` resolving `null`; `URL.createObjectURL` is
+  stubbed only in `CoverImage.test.tsx`.
+- Live smoke-tested against the real backend (compose `db` + local uvicorn on
+  8123, then stopped): register (first user → admin), `/search/albums` merged
+  shapes, import MB "Remain in Light" (201), listAlbums `tracks: []`, getAlbum
+  tracklist, tag replace (lowercase+dedupe), logPlay/listPlays, cover → 200
+  `image/jpeg`, duplicate import → 409 `Album already in your shelf (id=1)`.
+  Also confirmed #2's Deezer search rows arrive with `year: None` — the add UI
+  renders those gracefully. Smoke data left in the dev `vynl` DB (user +
+  1 album).
+- Tests: `ShelfPage.test.tsx` (10), `AlbumDetailPage.test.tsx` (11),
+  `AddAlbumPage.test.tsx` (6), `FindPage.test.tsx` (4),
+  `CoverImage.test.tsx` (7), `AlbumCard.test.tsx` (4), `TagEditor.test.tsx` (4),
+  `format.test.ts` (4 describe blocks) → **81 passed** (`npm test`), `npm run
+  build` green. New total vs #4's 25 is 81 (added 56).

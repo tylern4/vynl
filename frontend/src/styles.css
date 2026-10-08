@@ -377,3 +377,583 @@ textarea:focus {
     font-size: 16px;
   }
 }
+
+/* ---------- Shared page bits ---------- */
+
+.page-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.empty-state {
+  margin: 2rem 0;
+  padding: 2.5rem 1rem;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.empty-state h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.empty-state .muted {
+  margin: 0;
+  max-width: 34rem;
+}
+
+/* ---------- Shelf ---------- */
+
+.shelf-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1rem 0 0.75rem;
+}
+
+.shelf-toolbar > input {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.shelf-toolbar > input[type='search'] {
+  background-image: none;
+}
+
+.shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  gap: 1rem;
+}
+
+.album-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: transform 0.1s ease, box-shadow 0.12s ease;
+}
+
+.album-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.album-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.album-card-cover {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: var(--surface-alt);
+}
+
+.album-card-body {
+  padding: 0.55rem 0.65rem 0.6rem;
+}
+
+.album-card-title {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.25;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.album-card-meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.album-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.4rem;
+}
+
+.fav-btn {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  background: var(--backdrop);
+  color: #fff;
+}
+
+.fav-btn:hover {
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+}
+
+.fav-btn.is-fav {
+  color: var(--accent);
+}
+
+/* ---------- Tags / chips ---------- */
+
+.tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.tag-chip-sm {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.5rem;
+  border: none;
+  background: var(--hover);
+}
+
+.tag-chip-btn {
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.tag-chip-btn:hover {
+  background: var(--hover);
+}
+
+.tag-chip-btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+a.tag-chip-link {
+  text-decoration: none;
+}
+
+a.tag-chip-link:hover {
+  background: var(--hover);
+}
+
+.tag-count {
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.tag-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.tag-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  line-height: 0;
+  opacity: 0.6;
+}
+
+.tag-chip-remove:hover {
+  opacity: 1;
+}
+
+/* ---------- Cover placeholder ---------- */
+
+.cover-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  aspect-ratio: 1;
+  background: var(--surface-alt);
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+/* ---------- Searching (add / find) ---------- */
+
+.search-box {
+  position: relative;
+  margin: 1rem 0;
+}
+
+.search-box .search-icon {
+  position: absolute;
+  left: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.search-box input {
+  width: 100%;
+  padding-left: 2.4rem;
+  border-radius: 10px;
+}
+
+.search-hint {
+  position: absolute;
+  right: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.82rem;
+  pointer-events: none;
+}
+
+.result-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.result-row:last-child {
+  border-bottom: none;
+}
+
+.result-row:hover {
+  background: var(--hover);
+}
+
+a.result-row {
+  text-decoration: none;
+  color: inherit;
+}
+
+.result-cover {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.cover-placeholder.result-cover {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  font-size: 0.6rem;
+}
+
+.result-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.result-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-error {
+  font-size: 0.78rem;
+  color: var(--danger);
+}
+
+.song-row {
+  display: flex;
+}
+
+.track-duration {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.search-section {
+  margin-top: 1.5rem;
+}
+
+.search-section h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.05rem;
+}
+
+/* ---------- Album detail ---------- */
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.detail-cover-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.cover-placeholder.detail-cover-img {
+  width: 100%;
+  font-size: 0.85rem;
+}
+
+.detail-info h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  line-height: 1.15;
+}
+
+.detail-artist {
+  margin: 0.3rem 0 0.6rem;
+  font-size: 1.05rem;
+  color: var(--muted);
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+.source-badge {
+  display: inline-block;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.source-deezer {
+  color: var(--accent-dark);
+  border-color: var(--accent);
+}
+
+.source-musicbrainz {
+  color: #667eea;
+  border-color: #a5b4fb;
+}
+
+:root[data-theme='dark'] .source-musicbrainz {
+  color: #9dacff;
+}
+
+.last-played {
+  margin: 0.25rem 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.confirm-row {
+  margin-top: 0.9rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--danger-border);
+  border-radius: 10px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.card.section {
+  margin: 1rem 0;
+  padding: 1.1rem 1.25rem;
+}
+
+.card.section h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+/* ---------- Tracklist ---------- */
+
+.tracklist {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tracklist th,
+.tracklist td {
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tracklist th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.tracklist tbody tr:hover {
+  background: var(--hover);
+}
+
+.tracklist tfoot td {
+  font-weight: 650;
+  border-bottom: none;
+  border-top: 2px solid var(--border);
+}
+
+.track-position {
+  width: 3rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.track-duration {
+  width: 5rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Tag editor ---------- */
+
+.tag-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.tag-add-form {
+  display: flex;
+  gap: 0.5rem;
+  max-width: 26rem;
+}
+
+.tag-add-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+.tag-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* ---------- Play history ---------- */
+
+.play-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.play-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  max-width: 30rem;
+}
+
+/* ---------- Shelf/detail responsive ---------- */
+
+@media (max-width: 640px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .detail-cover-img {
+    max-width: 320px;
+    margin: 0 auto;
+  }
+
+  .shelf-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.7rem;
+  }
+
+  .search-hint {
+    display: none;
+  }
+}

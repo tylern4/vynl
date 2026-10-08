@@ -113,6 +113,24 @@ export const api = {
   /** Cover image URL for an album; falls back to `album.cover_url` on 404. */
   getCoverUrl: (id: number) => `/api/albums/${id}/cover`,
 
+  /**
+   * Fetch the cached cover image with auth (the cover endpoint is
+   * `get_current_user`-gated, so a bare `<img>` can't load it). Returns
+   * `null` on 404/error; callers should revoke any blob URL they create.
+   */
+  getCoverBlob: async (id: number): Promise<Blob | null> => {
+    try {
+      const token = getToken()
+      const res = await fetch(`/api/albums/${id}/cover`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) return null
+      return await res.blob()
+    } catch {
+      return null
+    }
+  },
+
   // ---- Tags ----
   getTags: () => request<Tag[]>('/tags'),
   createTag: (name: string) =>
