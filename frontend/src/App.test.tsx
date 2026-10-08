@@ -54,6 +54,10 @@ describe('App routing', () => {
     expect(fetch).toHaveBeenCalledWith('/api/auth/me', expect.anything())
     expect(screen.getByRole('navigation')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Toggle theme' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
+      'href',
+      '/settings',
+    )
     expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument()
   })
 })

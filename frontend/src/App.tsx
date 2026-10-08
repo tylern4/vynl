@@ -1,9 +1,10 @@
 import { Link, Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom'
-import { Dices, Disc3, Library, Moon, Plus, Search, Sun } from 'lucide-react'
+import { Dices, Disc3, Library, Moon, Plus, Search, Settings, Sun } from 'lucide-react'
 import { ProtectedRoute, useAuth } from './auth'
 import { useTheme } from './theme'
 import { LoginPage } from './pages/Login'
 import { RegisterPage } from './pages/Register'
+import { SettingsPage } from './pages/SettingsPage'
 import { ShelfPage } from './pages/ShelfPage'
 import { AlbumDetailPage } from './pages/AlbumDetailPage'
 import { AddAlbumPage } from './pages/AddAlbumPage'
@@ -12,7 +13,7 @@ import { RecommendPage } from './pages/RecommendPage'
 
 function AppShell() {
   const { user, logout } = useAuth()
-  const { theme, toggle } = useTheme()
+  const { mode, toggleMode } = useTheme()
 
   return (
     <div className="app-shell">
@@ -36,8 +37,11 @@ function AppShell() {
         </nav>
         <div className="topbar-actions">
           <span className="topbar-user">{user?.name}</span>
-          <button className="icon-btn" type="button" onClick={toggle} aria-label="Toggle theme">
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          <Link to="/settings" className="icon-link" aria-label="Settings">
+            <Settings size={18} aria-hidden />
+          </Link>
+          <button className="icon-btn" type="button" onClick={toggleMode} aria-label="Toggle theme">
+            {mode === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
           <button className="btn btn-ghost btn-sm" type="button" onClick={logout}>
             Log out
@@ -68,6 +72,7 @@ export default function App() {
         <Route path="/add" element={<AddAlbumPage />} />
         <Route path="/find" element={<FindPage />} />
         <Route path="/recommend" element={<RecommendPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

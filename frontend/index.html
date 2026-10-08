@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>vynl</title>
     <script>
-      // Apply the saved/system theme before first paint so there's no flash of
-      // the wrong color scheme (kept in sync with src/theme.tsx).
+      // Apply the saved/system theme AND palette before first paint so there's
+      // no flash of the wrong colors (kept in sync with src/theme.tsx).
       ;(function () {
         try {
           var t = localStorage.getItem('vynl_theme')
@@ -16,8 +16,15 @@
               : 'light'
           }
           document.documentElement.setAttribute('data-theme', t)
+          // Palette axis: `vynl_palette` or the `default` palette.
+          var p = localStorage.getItem('vynl_palette')
+          if (!/^(default|citypop|cyberpunk|recordshop|hippie|deathmetal|punk|classical)$/.test(p || '')) {
+            p = 'default'
+          }
+          document.documentElement.setAttribute('data-palette', p)
         } catch (e) {
           document.documentElement.setAttribute('data-theme', 'light')
+          document.documentElement.setAttribute('data-palette', 'default')
         }
       })()
     </script>

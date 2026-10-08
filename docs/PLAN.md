@@ -419,6 +419,17 @@ redirect to `/login`. `types.ts` mirrors the §5 JSON shapes. Styling:
 system default first visit), lucide-react icons, **no CSS framework**. Album cards
 show `GET /api/albums/{id}/cover` with `cover_url` fallback and `loading="lazy"`.
 
+Theming is two independent axes (`theme.tsx`): `data-theme="light|dark"` (persisted
+under `vynl_theme`, system preference on first visit) plus a `data-palette` axis
+persisted under `vynl_palette` (default `default`) selecting one of **eight curated
+palettes** — default, citypop, cyberpunk, recordshop, hippie, deathmetal, punk,
+classical — each shipped as a full light *and* dark token block in `styles.css`
+(`:root[data-palette='<name>']` and `:root[data-palette='<name>'][data-theme='dark']`),
+with the default palette reproducing the original warm tokens exactly. Palette and
+mode are picked on the `/settings` page (gear icon in the top bar) and both saved
+attributes are applied pre-first-paint by `index.html`'s inline guard so reloads
+never flash the wrong colors.
+
 Testing: Vitest + React Testing Library, same setup as reference
 (`src/test/setup.ts`); every page/component gets a `.test.tsx` colocated.
 

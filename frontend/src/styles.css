@@ -3,8 +3,31 @@
  * chips) and always pairs with `--on-accent` text; `--accent-ink` is the same
  * hue used as *foreground* (links, icons, active nav) and differs from the
  * button color in dark mode so it stays readable on dark surfaces.
+ *
+ * Palette axis: `<html data-palette="...">` (default | citypop | cyberpunk |
+ * recordshop | hippie | deathmetal | punk | classical) picks a palette, and the
+ * existing `data-theme="light|dark"` picks the mode inside it. Every palette
+ * ships a full token block for both modes. The default palette's values are
+ * byte-identical to issue #8's tokens (zero visual regression). Hexes in the
+ * `PALETTES` catalog in `src/theme.tsx` mirror the accent/bg/surface/text
+ * values here for the settings-page swatch previews — keep them in sync.
+ *
+ * Contrast floor (WCAG AA, both modes): body text on bg/surface ≥ 4.5:1,
+ * muted ≥ 3:1, on-accent vs accent ≥ 4.5:1, and the MusicBrainz badge `--mb`
+ * on surface ≥ 4.5:1. Neon-inclined palettes keep buttons darker and reserve
+ * the wildest colors for `--accent-ink`/borders.
  */
+
+/* Radii/spacing are palette-independent and stay out of palette blocks. */
 :root {
+  --radius: 12px;
+  --radius-lg: 20px;
+  --spacing: 0.75rem;
+}
+
+/* ---------- Default (current warm look; byte-identical to #8) ---------- */
+
+:root[data-palette='default'] {
   color-scheme: light;
   --bg: #f6f5f2;
   --surface: #ffffff;
@@ -25,12 +48,9 @@
   --mb-border: #7c8ae6;
   --backdrop: rgba(43, 42, 38, 0.45);
   --shadow: 0 1px 3px rgba(43, 42, 38, 0.08), 0 8px 24px rgba(43, 42, 38, 0.06);
-  --radius: 12px;
-  --radius-lg: 20px;
-  --spacing: 0.75rem;
 }
 
-:root[data-theme='dark'] {
+:root[data-palette='default'][data-theme='dark'] {
   color-scheme: dark;
   --bg: #18181c;
   --surface: #212126;
@@ -50,6 +70,328 @@
   --mb-border: #6b7ad9;
   --backdrop: rgba(0, 0, 0, 0.6);
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- City pop — pastel sunset + synthwave pastels ---------- */
+
+:root[data-palette='citypop'] {
+  color-scheme: light;
+  --bg: #fbf0f4;
+  --surface: #ffffff;
+  --surface-alt: #fdf5f7;
+  --border: #ead8df;
+  --text: #2a1c33;
+  --muted: #6e6077;
+  --accent: #4c5dd7;
+  --accent-dark: #3e4cc0;
+  --accent-ink: #3a2c9e;
+  --on-accent: #ffffff;
+  --hover: #f3e6ed;
+  --danger: #b52e44;
+  --danger-bg: #fbe7ea;
+  --danger-border: #f3c4cc;
+  --mb: #5d68c8;
+  --mb-border: #8a93e2;
+  --backdrop: rgba(42, 28, 51, 0.45);
+  --shadow: 0 1px 3px rgba(42, 28, 51, 0.08), 0 8px 24px rgba(42, 28, 51, 0.06);
+}
+
+:root[data-palette='citypop'][data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #1d0225;
+  --surface: #2a0b35;
+  --surface-alt: #331443;
+  --border: #4a2a5c;
+  --text: #f6eff8;
+  --muted: #b9a5c4;
+  --accent: #6b5ce0;
+  --accent-dark: #5748cc;
+  --accent-ink: #e056d6;
+  --on-accent: #ffffff;
+  --hover: #331443;
+  --danger: #ff8aa0;
+  --danger-bg: #4a1524;
+  --danger-border: #7e2c40;
+  --mb: #a8b0ff;
+  --mb-border: #7e88e8;
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- Cyberpunk — near-black navy + neon magenta/cyan ---------- */
+
+:root[data-palette='cyberpunk'] {
+  color-scheme: light;
+  --bg: #e8edf7;
+  --surface: #ffffff;
+  --surface-alt: #f7f9fd;
+  --border: #d3dae8;
+  --text: #0b0d17;
+  --muted: #555c6e;
+  --accent: #c01a86;
+  --accent-dark: #9e126e;
+  --accent-ink: #0b7285;
+  --on-accent: #ffffff;
+  --hover: #e4e9f4;
+  --danger: #c0392b;
+  --danger-bg: #fbe7eb;
+  --danger-border: #f3c7ce;
+  --mb: #4167b0;
+  --mb-border: #6f8fd0;
+  --backdrop: rgba(11, 13, 23, 0.45);
+  --shadow: 0 1px 3px rgba(11, 13, 23, 0.08), 0 8px 24px rgba(11, 13, 23, 0.06);
+}
+
+:root[data-palette='cyberpunk'][data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0b0d17;
+  --surface: #141726;
+  --surface-alt: #1b1e30;
+  --border: #2e3347;
+  --text: #c9d1d9;
+  --muted: #8b93a7;
+  --accent: #c01a86;
+  --accent-dark: #9e126e;
+  --accent-ink: #00e5ff;
+  --on-accent: #ffffff;
+  --hover: #1d2135;
+  --danger: #ff6b9d;
+  --danger-bg: #3a1424;
+  --danger-border: #6e2a44;
+  --mb: #63d0f0;
+  --mb-border: #3a8fa8;
+  --backdrop: rgba(0, 0, 0, 0.65);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- Record shop — aged cream paper + espresso/wood browns ---------- */
+
+:root[data-palette='recordshop'] {
+  color-scheme: light;
+  --bg: #f4ede0;
+  --surface: #fdfaf2;
+  --surface-alt: #faf3e6;
+  --border: #e0d4be;
+  --text: #2e2418;
+  --muted: #6e5f4a;
+  --accent: #b34e0e;
+  --accent-dark: #96400a;
+  --accent-ink: #8d5808;
+  --on-accent: #ffffff;
+  --hover: #f1e8d7;
+  --danger: #a03038;
+  --danger-bg: #f9e6e3;
+  --danger-border: #ecc7c2;
+  --mb: #5e54a8;
+  --mb-border: #8b84c6;
+  --backdrop: rgba(46, 36, 24, 0.45);
+  --shadow: 0 1px 3px rgba(46, 36, 24, 0.1), 0 8px 24px rgba(46, 36, 24, 0.08);
+}
+
+:root[data-palette='recordshop'][data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #211712;
+  --surface: #2c201a;
+  --surface-alt: #352821;
+  --border: #4a3a30;
+  --text: #ece0cf;
+  --muted: #bba890;
+  --accent: #b34e0e;
+  --accent-dark: #96400a;
+  --accent-ink: #e8a44c;
+  --on-accent: #ffffff;
+  --hover: #3a2d24;
+  --danger: #ff9b87;
+  --danger-bg: #451f1b;
+  --danger-border: #7a3b30;
+  --mb: #a7a0e4;
+  --mb-border: #7370b8;
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- 70s hippie — sunflower/terracotta + muted teal ---------- */
+
+:root[data-palette='hippie'] {
+  color-scheme: light;
+  --bg: #faf3e4;
+  --surface: #fffcf4;
+  --surface-alt: #faf4e8;
+  --border: #e9dcc3;
+  --text: #33261a;
+  --muted: #72634b;
+  --accent: #bc4a2e;
+  --accent-dark: #9e3e26;
+  --accent-ink: #3f6b6e;
+  --on-accent: #ffffff;
+  --hover: #f3ead8;
+  --danger: #b2412b;
+  --danger-bg: #fbeae2;
+  --danger-border: #efc9b8;
+  --mb: #57699e;
+  --mb-border: #8597c4;
+  --backdrop: rgba(51, 38, 26, 0.45);
+  --shadow: 0 1px 3px rgba(51, 38, 26, 0.09), 0 8px 24px rgba(51, 38, 26, 0.07);
+}
+
+:root[data-palette='hippie'][data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #2b1c10;
+  --surface: #38261a;
+  --surface-alt: #42301f;
+  --border: #5a4432;
+  --text: #f2e9d8;
+  --muted: #c2b096;
+  --accent: #bc4a2e;
+  --accent-dark: #9e3e26;
+  --accent-ink: #7fb4b7;
+  --on-accent: #ffffff;
+  --hover: #463222;
+  --danger: #ff9784;
+  --danger-bg: #4a1f19;
+  --danger-border: #7e3a2c;
+  --mb: #8fa7d8;
+  --mb-border: #6a82b4;
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- Death metal — black/bone + blood red, green accent ---------- */
+
+:root[data-palette='deathmetal'] {
+  color-scheme: light;
+  --bg: #f1ece6;
+  --surface: #ffffff;
+  --surface-alt: #f8f4ef;
+  --border: #d9d2c8;
+  --text: #191512;
+  --muted: #5f5850;
+  --accent: #8e0f1e;
+  --accent-dark: #6f0a17;
+  --accent-ink: #6e0a16;
+  --on-accent: #ffffff;
+  --hover: #e7e1d8;
+  --danger: #a3121f;
+  --danger-bg: #f9e4e4;
+  --danger-border: #ecc5c9;
+  --mb: #50556e;
+  --mb-border: #7a7f9c;
+  --backdrop: rgba(25, 21, 18, 0.5);
+  --shadow: 0 1px 3px rgba(25, 21, 18, 0.12), 0 8px 24px rgba(25, 21, 18, 0.08);
+}
+
+:root[data-palette='deathmetal'][data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0d0c0b;
+  --surface: #171412;
+  --surface-alt: #1e1a17;
+  --border: #38322e;
+  --text: #ece4d8;
+  --muted: #a79c8e;
+  --accent: #a3121f;
+  --accent-dark: #7e0e18;
+  --accent-ink: #8fc168;
+  --on-accent: #ffffff;
+  --hover: #231e1a;
+  --danger: #ff8b8b;
+  --danger-bg: #401617;
+  --danger-border: #732328;
+  --mb: #aeacbe;
+  --mb-border: #6e6c7d;
+  --backdrop: rgba(0, 0, 0, 0.7);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.55), 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- Punk — high-contrast zine: black, red, acid green ---------- */
+
+:root[data-palette='punk'] {
+  color-scheme: light;
+  --bg: #f5f3ec;
+  --surface: #ffffff;
+  --surface-alt: #fbfaf4;
+  --border: #1e1b16;
+  --text: #16130e;
+  --muted: #4e4a42;
+  --accent: #c81d1d;
+  --accent-dark: #a41313;
+  --accent-ink: #2e6e1c;
+  --on-accent: #ffffff;
+  --hover: #ece9df;
+  --danger: #c12828;
+  --danger-bg: #fae6e6;
+  --danger-border: #edc4c9;
+  --mb: #33519e;
+  --mb-border: #7b8fd0;
+  --backdrop: rgba(22, 19, 14, 0.5);
+  --shadow: 0 1px 3px rgba(22, 19, 14, 0.1), 0 8px 24px rgba(22, 19, 14, 0.08);
+}
+
+:root[data-palette='punk'][data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0b0b0a;
+  --surface: #151412;
+  --surface-alt: #1c1b18;
+  --border: #3a382f;
+  --text: #f3f1ea;
+  --muted: #b4b0a5;
+  --accent: #c81d1d;
+  --accent-dark: #a41313;
+  --accent-ink: #74e85c;
+  --on-accent: #ffffff;
+  --hover: #211f1b;
+  --danger: #ff7a70;
+  --danger-bg: #401919;
+  --danger-border: #732a26;
+  --mb: #a9b4e6;
+  --mb-border: #6e7bb8;
+  --backdrop: rgba(0, 0, 0, 0.7);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.55), 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- Classical — ivory + deep navy + gold ---------- */
+
+:root[data-palette='classical'] {
+  color-scheme: light;
+  --bg: #f4f0e7;
+  --surface: #ffffff;
+  --surface-alt: #f8f4e9;
+  --border: #ddd5c3;
+  --text: #14213d;
+  --muted: #5c6273;
+  --accent: #14213d;
+  --accent-dark: #0e1629;
+  --accent-ink: #6f530f;
+  --on-accent: #ffffff;
+  --hover: #efe9db;
+  --danger: #a23329;
+  --danger-bg: #f9e7e2;
+  --danger-border: #ecc9c0;
+  --mb: #4a5d8c;
+  --mb-border: #7c8db8;
+  --backdrop: rgba(20, 33, 61, 0.45);
+  --shadow: 0 1px 3px rgba(20, 33, 61, 0.09), 0 8px 24px rgba(20, 33, 61, 0.07);
+}
+
+:root[data-palette='classical'][data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #1a1e2e;
+  --surface: #232a3d;
+  --surface-alt: #2a3247;
+  --border: #3e475c;
+  --text: #f5f1e6;
+  --muted: #b7b2a1;
+  --accent: #d4a92e;
+  --accent-dark: #e0bc4a;
+  --accent-ink: #e3c15a;
+  --on-accent: #1a1e2e;
+  --hover: #2e3650;
+  --danger: #ff9b8e;
+  --danger-bg: #45161b;
+  --danger-border: #7a3238;
+  --mb: #a8b8e0;
+  --mb-border: #7383b3;
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -986,9 +1328,11 @@ a.result-row {
 a:focus-visible,
 .btn:focus-visible,
 .icon-btn:focus-visible,
+.icon-link:focus-visible,
 .tag-chip-btn:focus-visible,
 .tag-chip-remove:focus-visible,
-.mode-toggle button:focus-visible {
+.mode-toggle button:focus-visible,
+.palette-card:focus-visible {
   outline: 2px solid var(--accent-ink);
   outline-offset: 2px;
 }
@@ -1173,7 +1517,7 @@ a:focus-visible,
   padding: 0.35rem 0.4rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--accent-dark);
+  color: var(--accent-ink);
 }
 
 .loader-spin {
@@ -1412,5 +1756,111 @@ a:focus-visible,
   .detail-skeleton-cover {
     max-width: 320px;
     margin: 0 auto;
+  }
+}
+
+/* ---------- Settings page ---------- */
+
+/* Top-bar icon link (gear → /settings), same footprint as `.icon-btn`. */
+.icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  padding: 0.3rem;
+  border-radius: 8px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.icon-link:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.settings-section {
+  margin: 1.5rem 0 0;
+}
+
+.settings-section h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.settings-section > p {
+  margin: 0 0 0.9rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.palette-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.65rem 0.75rem 0.7rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s ease, box-shadow 0.12s ease;
+}
+
+.palette-card:hover {
+  background: var(--hover);
+}
+
+.palette-card.is-current {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.palette-name {
+  font-weight: 650;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.palette-current {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--on-accent);
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 0.08rem 0.5rem;
+}
+
+.palette-swatches {
+  display: flex;
+  gap: 3px;
+  align-self: stretch;
+}
+
+.palette-swatch {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 480px) {
+  .palette-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
 }

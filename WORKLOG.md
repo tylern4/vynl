@@ -512,3 +512,60 @@ shipped, decisions made, anything the next agent needs to know.
   1.64 → `chromium-1248`, driven by `shots.js`, Node at `~/.local/node`); its
   selectors match the post-#8 source except the detail wait — use `table.tracklist`
   inside `.tracklist-scroll`; recommend shot = filter tag `classic` → Spin.
+
+## 2026-10-08 — Issue #10 palette themes — agent-palette-10
+
+- Shipped an 8-palette theme system on a second `data-palette` axis on `<html>`
+  (`default | citypop | cyberpunk | recordshop | hippie | deathmetal | punk |
+  classical`), each palette a full light **and** dark token block in
+  `styles.css` under `:root[data-palette='…']` and
+  `:root[data-palette='…'][data-theme='dark']`; radii/spacing moved to a shared
+  bare `:root`. **Default palette tokens are byte-identical to #8** (default
+  ratios reproduce #8's recorded 4.58 button / 4.92 light muted / 5.31 MB /
+  5.84 hover figures). Every component keeps using the same var names; the only
+  component edit was `.rec-spun` switching `--accent-dark` → `--accent-ink`
+  (accent-dark as text was 2.75:1 on dark surfaces — tokens untouched).
+- Palettes + main light-mode accent hexes: **default** `#b85c1e` (unchanged),
+  **citypop** `#4c5dd7`, **cyberpunk** `#c01a86`, **recordshop** `#b34e0e`,
+  **hippie** `#bc4a2e`, **deathmetal** `#8e0f1e`, **punk** `#c81d1d`,
+  **classical** `#14213d`. Dark-mode accent hexes: default `#b85c1e`, citypop
+  `#6b5ce0`, cyberpunk `#c01a86`, recordshop `#b34e0e`, hippie `#bc4a2e`,
+  deathmetal `#a3121f`, punk `#c81d1d`, classical `#d4a92e` (dark ink
+  `#1a1e2e` on gold). Reference hexes deviated wherever white-on-neon would
+  fail AA — kept the mood, see the issue Notes for the full deviation list.
+- **Contrast (WCAG AA, light/dark):** every binding floor passes for all 8
+  palettes × both modes — text on bg/surface ≥ 4.5 (min 11.53), muted on
+  surface ≥ 4.5 (min 4.92, default light), on-accent vs accent ≥ 4.5 (min 4.58,
+  worst citypop dark 4.96), MB badge ≥ 4.5 (min 4.91, citypop light),
+  danger/danger-bg ≥ 4.5 (min 4.59 cyberpunk light). Only sub-4.5 value:
+  default-light accent-ink/bg 4.20 (byte-identical #8 token, link/icon color,
+  not in the floor). Full table in the issue Notes.
+- **Settings page** `/settings`: gear icon (`Settings` lucide, `aria-label`,
+  `.icon-link`) in the top bar links to it; 8-card palette grid renders live
+  light+dark swatch strips from the `PALETTES` catalog (accent/bg/surface/text
+  hexes, kept in sync with `styles.css` by convention), "current" badge +
+  `aria-pressed`, click applies + persists instantly, `aria-live` polite;
+  light/dark `mode-toggle` there too. Top-bar sun/moon toggle preserved
+  (`toggleMode`). Mobile-friendly grid (auto-fill 210px → 150px ≤480).
+- Storage keys: `vynl_palette` (new) alongside `vynl_theme`. `theme.tsx`
+  exports `Palette`/`PaletteName`, `PALETTES` catalog, `getInitialPalette`
+  (unknown value → `default`), `applyPalette`; `useTheme()` now returns
+  `{ mode, palette, setMode, setPalette, toggleMode }`. `main.tsx` applies
+  both axes on boot.
+- **FOUC-free:** `index.html`'s pre-paint inline script now sets BOTH
+  `data-theme` and `data-palette` from localStorage (validated against the
+  eight ids, `default` fallback). Verified in a real Chromium (Playwright
+  scratch, dev server on 5173): reload with stored `punk` + `dark` lands with
+  both attributes already set and body bg = punk dark; a 16-case matrix
+  checked computed styles (body/topbar/palette-card/mode-toggle/badge) against
+  every palette × mode — all correct, no hardcoded colors in components.
+- Tests: `theme.test.tsx` rewritten for the new API (+palette persistence /
+  apply / catalog / FOUC-axis tests), `SettingsPage.test.tsx` (5: cards for all
+  8, current state, click persists + applies, mode toggle, a11y labels),
+  `App.test.tsx` +1 gear-link assertion. **`npm test` 108 passed** (was 95,
+  +13), **`npm run build` green**. Docs: PLAN §7 paragraph + README feature
+  bullet.
+- For the coordinator: no backend/API changes, no new deps, no PLAN contract
+  edits beyond the §7 paragraph. The docker `vynl-frontend` container on :8081
+  still serves the stale #7-era build — `npm run dev` on 5173 (or a rebuild)
+  is the current source of truth. Dev server was stopped after verification.

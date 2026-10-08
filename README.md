@@ -32,6 +32,10 @@ frontend, everything behind one `docker compose up`.
 - **Library search** — find albums or individual songs across your collection.
 - **Recommendations** — a "dusty" picker that surfaces records you haven't spun
   in a while (with a reason and "X days since spun"), plus a pure random spin.
+- **Color palettes + settings** — eight curated palettes (city pop, cyberpunk,
+  record shop, 70s hippie, death metal, punk, classical, and the default warm
+  look), each fully styled for light and dark mode and switchable from a settings
+  page.
 
 ## Architecture
 
