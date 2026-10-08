@@ -760,3 +760,29 @@ shipped, decisions made, anything the next agent needs to know.
   `country` surfaced verbatim from the payload (e.g. `"USA"`, not normalized to
   the storefront code); Discogs search reads the real `label` (list of strings)
   key while also tolerating release-payload `labels` (list of dicts).
+
+## 2026-10-08 — Deploy verification + screenshot refresh + dev-DB wipe — coordinator
+
+- All 12 implementation issues (#1–#8, #10–#13) are done, committed, and pushed
+  to `origin/main`. Rebuilt BOTH containers on the completed code (backend image
+  now installs `python-multipart`; frontend bakes #8/#10/#11/#12/#13) via
+  `docker compose build && up -d`; backend migrations ran clean, `/api/health` ok.
+- Live smoke (`scripts/smoke.sh` with demo admin approval): **16/16 passed** —
+  health, register+approve+login, 4-provider search (5 results), import, detail
+  + tracklist, cover bytes direct + through nginx, tags, backdated play, dusty
+  recommendation, frontend shell.
+- Screenshots re-captured against the production nginx build into
+  `docs/screenshots/` (shelf, album-detail, add-album, find, recommend) and
+  committed. Automated verification on the built container: palette matrix
+  **16/16** (8 palettes × 2 modes, computed styles), and a feature check
+  (settings shows 8 palette cards + 2 modes; `/add/manual` renders form + track
+  editor; clicking a result title opens the preview modal with the tracklist).
+  NOTE: the coordinator model has no image input, so the PNGs were validated by
+  dimensions/DOM assertions rather than by eye.
+- Dev-DB wipe: deleted demo user 6 (`shelf-demo@example.com`, 7 albums) and the
+  smoke user 9 (+ a leftover smoke album), with their plays/tags/album_tags and
+  cached cover files. User 5 (`nicholas.s.tyler.4@gmail.com`) is the only
+  remaining account, with its 3 albums/tracks/tags intact; no orphan albums and
+  the covers volume now matches the DB (11/14/15).
+- Tracker: issue #9 (admin-approval UI gap — pending accounts have no UI path)
+  remains `open` as a known follow-up; everything else is done.
