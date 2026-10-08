@@ -1,0 +1,60 @@
+{
+  "data": [
+    {
+      "id": 467270,
+      "title": "Remain in Light",
+      "link": "https://www.deezer.com/album/467270",
+      "cover": "https://api.deezer.com/album/467270/image",
+      "cover_small": "https://cdn-images.dzcdn.net/images/cover/remain/56x56-000000-80-0-0.jpg",
+      "cover_medium": "https://cdn-images.dzcdn.net/images/cover/remain/250x250-000000-80-0-0.jpg",
+      "cover_big": "https://cdn-images.dzcdn.net/images/cover/remain/500x500-000000-80-0-0.jpg",
+      "cover_xl": "https://cdn-images.dzcdn.net/images/cover/remain/1000x1000-000000-80-0-0.jpg",
+      "md5_image": "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+      "genre_id": 152,
+      "nb_tracks": 12,
+      "record_type": "album",
+      "tracklist": "https://api.deezer.com/album/467270/tracks",
+      "explicit_lyrics": false,
+      "artist": {
+        "id": 181,
+        "name": "Talking Heads",
+        "link": "https://www.deezer.com/artist/181",
+        "type": "artist"
+      },
+      "type": "album"
+    },
+    {
+      "id": 5555,
+      "title": "Little Creatures",
+      "link": "https://www.deezer.com/album/5555",
+      "cover_xl": "https://cdn-images.dzcdn.net/images/cover/creatures/1000x1000-000000-80-0-0.jpg",
+      "cover_big": "https://cdn-images.dzcdn.net/images/cover/creatures/500x500-000000-80-0-0.jpg",
+      "md5_image": "11223344556677889900aabbccddeeff",
+      "nb_tracks": 11,
+      "record_type": "album",
+      "artist": {
+        "id": 181,
+        "name": "Talking Heads",
+        "type": "artist"
+      },
+      "type": "album"
+    },
+    {
+      "id": 9999,
+      "title": "Remain in Light",
+      "link": "https://www.deezer.com/album/9999",
+      "cover_xl": "https://cdn-images.dzcdn.net/images/cover/remain-dup/1000x1000-000000-80-0-0.jpg",
+      "cover_big": "https://cdn-images.dzcdn.net/images/cover/remain-dup/500x500-000000-80-0-0.jpg",
+      "md5_image": "ffeeddccbbaa99887766554433221100",
+      "nb_tracks": 14,
+      "record_type": "album",
+      "artist": {
+        "id": 181,
+        "name": "Talking Heads",
+        "type": "artist"
+      },
+      "type": "album"
+    }
+  ],
+  "total": 3
+}

@@ -1,0 +1,43 @@
+{
+  "id": 467270,
+  "title": "Remain in Light",
+  "upc": "075992609512",
+  "label": "Sire",
+  "release_date": "1980-10-30",
+  "nb_tracks": 7,
+  "available": true,
+  "explicit_lyrics": false,
+  "record_type": "album",
+  "link": "https://www.deezer.com/album/467270",
+  "share": "https://www.deezer.com/album/467270?utm_source=api",
+  "cover": "https://api.deezer.com/album/467270/image",
+  "cover_small": "https://cdn-images.dzcdn.net/images/cover/remain/56x56-000000-80-0-0.jpg",
+  "cover_medium": "https://cdn-images.dzcdn.net/images/cover/remain/250x250-000000-80-0-0.jpg",
+  "cover_big": "https://cdn-images.dzcdn.net/images/cover/remain/500x500-000000-80-0-0.jpg",
+  "cover_xl": "https://cdn-images.dzcdn.net/images/cover/remain/1000x1000-000000-80-0-0.jpg",
+  "md5_image": "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+  "genre_id": 152,
+  "genres": {
+    "data": [
+      {"id": 152, "name": "Rock", "picture": "https://api.deezer.com/genre/152/picture", "type": "genre"}
+    ]
+  },
+  "artist": {
+    "id": 181,
+    "name": "Talking Heads",
+    "link": "https://www.deezer.com/artist/181",
+    "type": "artist"
+  },
+  "type": "album",
+  "tracks": {
+    "data": [
+      {"id": 3100001, "readable": true, "title": "Born Under Punches (The Heat Goes On)", "duration": 349, "rank": 512345, "preview": "https://cdn-preview-1.dzcdn.net/preview1.mp3", "artist": {"id": 181, "name": "Talking Heads", "type": "artist"}, "type": "track"},
+      {"id": 3100002, "readable": true, "title": "The Great Curve", "duration": 388, "rank": 498765, "preview": "https://cdn-preview-2.dzcdn.net/preview2.mp3", "artist": {"id": 181, "name": "Talking Heads", "type": "artist"}, "type": "track"},
+      {"id": 3100003, "readable": true, "title": "Once in a Lifetime", "duration": 263, "rank": 723456, "preview": "https://cdn-preview-3.dzcdn.net/preview3.mp3", "artist": {"id": 181, "name": "Talking Heads", "type": "artist"}, "type": "track"},
+      {"id": 3100004, "readable": true, "title": "Houses in Motion", "duration": 271, "rank": 475678, "preview": "https://cdn-preview-4.dzcdn.net/preview4.mp3", "artist": {"id": 181, "name": "Talking Heads", "type": "artist"}, "type": "track"},
+      {"id": 3100005, "readable": true, "title": "Seen and Not Seen", "duration": 203, "rank": 456789, "preview": "https://cdn-preview-5.dzcdn.net/preview5.mp3", "artist": {"id": 181, "name": "Talking Heads", "type": "artist"}, "type": "track"},
+      {"id": 3100006, "readable": true, "title": "Listening Wind", "duration": 271, "rank": 445678, "preview": "https://cdn-preview-6.dzcdn.net/preview6.mp3", "artist": {"id": 181, "name": "Talking Heads", "type": "artist"}, "type": "track"},
+      {"id": 3100007, "readable": true, "title": "The Overload", "duration": 257, "rank": 434567, "preview": "https://cdn-preview-7.dzcdn.net/preview7.mp3", "artist": {"id": 181, "name": "Talking Heads", "type": "artist"}, "type": "track"}
+    ]
+  }
+}

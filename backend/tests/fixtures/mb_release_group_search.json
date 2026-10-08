@@ -1,0 +1,70 @@
+{
+  "created": "2026-10-08T12:00:00.000Z",
+  "count": 3,
+  "offset": 0,
+  "release-groups": [
+    {
+      "id": "f6b1b900-6108-32f0-abbd-2855af9151eb",
+      "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "score": 100,
+      "title": "Remain in Light",
+      "first-release-date": "1980-10-01",
+      "primary-type": "Album",
+      "artist-credit": [
+        {
+          "name": "Talking Heads",
+          "artist": {
+            "id": "a94a7155-c79d-4409-9fcf-220cb0e4dc3a",
+            "name": "Talking Heads",
+            "sort-name": "Talking Heads"
+          }
+        }
+      ]
+    },
+    {
+      "id": "1d4a1b8e-2f3c-4a5b-8c9d-0e1f2a3b4c5d",
+      "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "score": 92,
+      "title": "Naked",
+      "first-release-date": "1988-05-03",
+      "primary-type": "Album",
+      "artist-credit": [
+        {
+          "name": "Talking Heads",
+          "artist": {
+            "id": "a94a7155-c79d-4409-9fcf-220cb0e4dc3a",
+            "name": "Talking Heads",
+            "sort-name": "Talking Heads"
+          }
+        }
+      ]
+    },
+    {
+      "id": "7e2c9a4b-5d6e-4f70-8192-a3b4c5d6e7f8",
+      "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "score": 88,
+      "title": "My Life in the Bush of Ghosts",
+      "first-release-date": "1981-03-10",
+      "primary-type": "Album",
+      "artist-credit": [
+        {
+          "name": "Brian Eno",
+          "joinphrase": " & ",
+          "artist": {
+            "id": "a4b1cf20-fd67-3e5a-97f5-1d2f4c6f9a11",
+            "name": "Brian Eno",
+            "sort-name": "Eno, Brian"
+          }
+        },
+        {
+          "name": "David Byrne",
+          "artist": {
+            "id": "3f2f3a4d-0b1e-4f6a-8c3d-5e7a9b2c4d6e",
+            "name": "David Byrne",
+            "sort-name": "Byrne, David"
+          }
+        }
+      ]
+    }
+  ]
+}

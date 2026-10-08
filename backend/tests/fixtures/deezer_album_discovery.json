@@ -1,0 +1,36 @@
+{
+  "id": 302127,
+  "title": "Discovery",
+  "upc": "724384960650",
+  "label": "Daft Life Ltd./ADA France",
+  "release_date": "2001-03-07",
+  "nb_tracks": 4,
+  "available": true,
+  "record_type": "album",
+  "link": "https://www.deezer.com/album/302127",
+  "cover": "https://api.deezer.com/album/302127/image",
+  "cover_big": "https://cdn-images.dzcdn.net/images/cover/discovery/500x500-000000-80-0-0.jpg",
+  "cover_xl": "https://cdn-images.dzcdn.net/images/cover/discovery/1000x1000-000000-80-0-0.jpg",
+  "md5_image": "5718f7c81c27e0b2417e2a4c45224f8a",
+  "genre_id": 18,
+  "genres": {
+    "data": [
+      {"id": 18, "name": "Electronic", "picture": "https://api.deezer.com/genre/18/picture", "type": "genre"}
+    ]
+  },
+  "artist": {
+    "id": 27,
+    "name": "Daft Punk",
+    "link": "https://www.deezer.com/artist/27",
+    "type": "artist"
+  },
+  "type": "album",
+  "tracks": {
+    "data": [
+      {"id": 3135553, "readable": true, "title": "One More Time", "duration": 320, "rank": 896666, "artist": {"id": 27, "name": "Daft Punk", "type": "artist"}, "type": "track"},
+      {"id": 3135554, "readable": true, "title": "Aerodynamic", "duration": 207, "rank": 712345, "artist": {"id": 27, "name": "Daft Punk", "type": "artist"}, "type": "track"},
+      {"id": 3135555, "readable": true, "title": "Digital Love", "duration": 301, "rank": 756789, "artist": {"id": 27, "name": "Daft Punk", "type": "artist"}, "type": "track"},
+      {"id": 3135556, "readable": true, "title": "Harder, Better, Faster, Stronger", "duration": 224, "rank": 834567, "artist": {"id": 27, "name": "Daft Punk", "type": "artist"}, "type": "track"}
+    ]
+  }
+}

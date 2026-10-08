@@ -1,0 +1,119 @@
+{
+  "id": "6a5ee7ec-b90b-47f5-aec2-bc8177c9b46a",
+  "title": "Remain in Light",
+  "status": "Official",
+  "country": "US",
+  "date": "1980-10-01",
+  "barcode": "075992609512",
+  "artist-credit": [
+    {
+      "name": "Talking Heads",
+      "joinphrase": "",
+      "artist": {
+        "id": "a94a7155-c79d-4409-9fcf-220cb0e4dc3a",
+        "name": "Talking Heads",
+        "sort-name": "Talking Heads"
+      }
+    }
+  ],
+  "label-info": [
+    {
+      "catalog-number": "SRK 6095",
+      "label": {
+        "id": "be0fec81-5c18-4494-8bbf-0d81dec006bf",
+        "name": "Sire Records",
+        "sort-name": "Sire Records"
+      }
+    }
+  ],
+  "release-group": {
+    "id": "f6b1b900-6108-32f0-abbd-2855af9151eb",
+    "title": "Remain in Light",
+    "primary-type": "Album",
+    "first-release-date": "1980-10-01",
+    "artist-credit": [
+      {
+        "name": "Talking Heads",
+        "artist": {
+          "id": "a94a7155-c79d-4409-9fcf-220cb0e4dc3a",
+          "name": "Talking Heads",
+          "sort-name": "Talking Heads"
+        }
+      }
+    ]
+  },
+  "media": [
+    {
+      "position": 1,
+      "format": "Vinyl",
+      "track-offset": 0,
+      "track-count": 4,
+      "tracks": [
+        {
+          "position": 1,
+          "number": "A1",
+          "title": "Born Under Punches (The Heat Goes On)",
+          "length": 348973,
+          "id": "3129cc05-1be6-4c1a-ae16-0b2e5e802f81"
+        },
+        {
+          "position": 2,
+          "number": "A2",
+          "title": "The Great Curve",
+          "length": 387533,
+          "id": "6f1a0f2b-1c3d-4e5f-8a9b-0c1d2e3f4a5b"
+        },
+        {
+          "position": 3,
+          "number": "A3",
+          "title": "Once in a Lifetime",
+          "length": 262600,
+          "id": "9e8d7c6b-5a4f-4e3d-2c1b-0a9f8e7d6c5b"
+        },
+        {
+          "position": 4,
+          "number": "A4",
+          "title": "Houses in Motion",
+          "length": 270733,
+          "id": "4b5c6d7e-8f90-4a1b-8c2d-3e4f5a6b7c8d"
+        }
+      ]
+    },
+    {
+      "position": 2,
+      "format": "Vinyl",
+      "track-offset": 4,
+      "track-count": 4,
+      "tracks": [
+        {
+          "position": 1,
+          "number": "B1",
+          "title": "Seen and Not Seen",
+          "length": 203000,
+          "id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
+        },
+        {
+          "position": 2,
+          "number": "B2",
+          "title": "Listening Wind",
+          "length": 271000,
+          "id": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e"
+        },
+        {
+          "position": 3,
+          "number": "B3",
+          "title": "The Overload",
+          "length": null,
+          "id": "3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e7f"
+        },
+        {
+          "position": 4,
+          "number": "B4",
+          "title": "",
+          "length": 100000,
+          "id": "4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a"
+        }
+      ]
+    }
+  ]
+}

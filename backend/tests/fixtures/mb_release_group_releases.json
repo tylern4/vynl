@@ -1,0 +1,43 @@
+{
+  "id": "f6b1b900-6108-32f0-abbd-2855af9151eb",
+  "title": "Remain in Light",
+  "primary-type": "Album",
+  "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+  "first-release-date": "1980-10-01",
+  "artist-credit": [
+    {
+      "name": "Talking Heads",
+      "artist": {
+        "id": "a94a7155-c79d-4409-9fcf-220cb0e4dc3a",
+        "name": "Talking Heads",
+        "sort-name": "Talking Heads"
+      }
+    }
+  ],
+  "releases": [
+    {
+      "id": "0aa1b2c3-d4e5-4f60-7182-93a4b5c6d7e8",
+      "title": "Remain in Light",
+      "status": "Promotion",
+      "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+      "date": "1980-10-01",
+      "country": "PT"
+    },
+    {
+      "id": "6a5ee7ec-b90b-47f5-aec2-bc8177c9b46a",
+      "title": "Remain in Light",
+      "status": "Official",
+      "status-id": "4e304316-386d-3409-af2e-50facec439d1",
+      "date": "1980-10-01",
+      "country": "US"
+    },
+    {
+      "id": "5f6e7d8c-b9a0-4132-8475-26d1e3f4a5b6",
+      "title": "Remain in Light",
+      "status": "Official",
+      "status-id": "4e304316-386d-3409-af2e-50facec439d1",
+      "date": "2018-10-05",
+      "country": "EU"
+    }
+  ]
+}

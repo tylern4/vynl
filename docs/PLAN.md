@@ -334,6 +334,7 @@ routers never talk HTTP directly:
 ```python
 # providers/__init__.py — the contract other code imports
 def search_albums(query: str, limit: int = 20) -> list[SearchResult]: ...
+def search_albums_detailed(query: str, limit: int = 20) -> SearchOutcome: ...  # results + degraded provider names for §5's X-Search-Degraded header (added by issue #2; additive)
 def import_album(source: str, external_id: str) -> ImportedAlbum: ...  # raises ProviderError/NotFound
 ```
 
@@ -389,6 +390,12 @@ durations in seconds + cover URL).
 3. Duplicate check: `(user_id, source, external_id)` unique constraint **and**
    soft-dedupe on `(user_id, lower(title), lower(artist))` → 409 with the existing
    album id in the detail.
+4. The wire body carries a single `external_id` (§5), so "both ids known" means
+   `import_album` resolved the counterpart id itself: it searches the *other*
+   provider by normalized artist + title (year ± 1) and adopts a confident
+   match ("twin discovery"). Discovery failure or a 404 on the counterpart
+   degrades to a single-source import — never an error (issue #2
+   clarification).
 
 ---
 

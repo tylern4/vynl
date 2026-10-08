@@ -1,0 +1,25 @@
+{
+  "created": "2026-10-08T12:00:00.000Z",
+  "count": 1,
+  "offset": 0,
+  "release-groups": [
+    {
+      "id": "b9d5f8c0-4e2a-4f6a-9a5e-1d2c3b4a5e6f",
+      "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "score": 100,
+      "title": "Discovery",
+      "first-release-date": "2001-03-07",
+      "primary-type": "Album",
+      "artist-credit": [
+        {
+          "name": "Daft Punk",
+          "artist": {
+            "id": "755f4e4e-1f5a-4c4a-9d1c-9f0e2d3b4a5c",
+            "name": "Daft Punk",
+            "sort-name": "Daft Punk"
+          }
+        }
+      ]
+    }
+  ]
+}

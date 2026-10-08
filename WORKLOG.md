@@ -137,3 +137,59 @@ shipped, decisions made, anything the next agent needs to know.
   compose `db` — dev `vynl` DB schema dropped afterwards, left empty. Matches
   #4's typed contract (`User`/`UserAdmin`/`RegisterResult.access_token: null`).
   No PLAN.md or non-backend changes needed.
+
+## 2026-10-08 — Issue #2 music providers — agent-providers-2
+
+- Shipped `backend/src/providers/`: `base.py` (untouched — already sufficient:
+  `SearchResult`, `ImportedAlbum`, `TrackInput`, `ProviderError(.reason)`,
+  `NotFound`), `_client.py` (single HTTP seam: `get_client`/`set_client`/
+  `get_json`/`url_exists` — **tests inject fakes with `set_client`**),
+  `musicbrainz.py` (rg search, release import with
+  `inc=recordings+artist-credits+labels+release-groups`, ms→`round(ms/1000)`,
+  UA `vynl/0.1.0 ({settings.musicbrainz_contact})`, **module lock + 1.0s
+  min-interval throttle**), `deezer.py` (`/search/album`, `/album/{id}`),
+  `coverart.py` (HEAD-probe chain), `_merge.py` (normalize/years/merge),
+  `__init__.py` (orchestration: `ThreadPoolExecutor` concurrent search, import
+  assembly, twin discovery). Artwork is never downloaded — URL only.
+- Public interface: committed `search_albums(query, limit=20)` and
+  `import_album(source, external_id)` unchanged; `NotFound(ProviderError)` for
+  404/unknown id so #3 can map 404/502.
+- **⚠ CONTRACT REFINEMENT — PLAN §6 edited (two additive lines, nothing
+  removed):** (1) added `search_albums_detailed(query, limit=20) ->
+  SearchOutcome(results, degraded)` so §5's `X-Search-Degraded` header is
+  settable — `search_albums` still returns plain `list[SearchResult]`;
+  (2) added import rule 4 **"twin discovery"**: the wire body carries one id,
+  so `import_album` searches the *other* provider (normalized artist+title,
+  year ±1) to learn the counterpart id instead of requiring both ids. Contract
+  concerns also recorded in the issue file's Notes.
+- Import semantics: MB canonical (title/artist/year/label/country/rg-id) +
+  Deezer tracklist/cover, each source failing independently; primary-source
+  failure raises, counterpart failure degrades. `cover_url` = Deezer `cover_xl`
+  → CAA `release-group/{rg}/front-500` → `release/{rel}/front` → `None`; **CAA
+  404 → `cover_url=None`, not an error**.
+- **Response-shape discoveries (live-verified):** MB release uses
+  `label-info[]`, `media[].track-offset + track.position`, and includes
+  `release-group.first-release-date`; MB invalid/unknown mbid → **400 "Invalid
+  mbid."** (not 404), busy → 503. Deezer unknown album → **HTTP 200 +
+  `{"error":{"code":800}}`** (unwrapped into `NotFound`). Deezer
+  `/search/album` rows **omit `release_date`** → search-time `year=None` on
+  Deezer rows. CAA answers HEAD 200/404 (302→archive.org) — used for probing.
+- Tests: `backend/tests/test_providers.py` + 10 fixtures in
+  `backend/tests/fixtures/` — **27 passed, zero live network** (all via
+  `set_client` fake). Covers merged search, dedupe, one-provider-down,
+  both-down, MB length normalization, Deezer-404 import fallback, NotFound,
+  CAA 404→None, 1 req/s throttle, twin discovery. Provider tests shadow
+  conftest's autouse `_clean_tables` with a no-op → **they need no DB**
+  (verified with a dead `DATABASE_URL`); run with `POSTGRES_DB=vynl_provider`
+  if the default `vynl_test` is occupied by #3. Final full-suite run at
+  hand-off: **163 passed, 0 failed** (an earlier mid-hand-off run showed 6
+  failures + setup errors — all transient, caused by #3's concurrent
+  session/tests mid-edit; re-run after #3 settled was fully green).
+- **Notes for #3:** mock seam is `providers.set_client(...)` (and
+  `providers.search_albums_detailed` for the degraded header);
+  `SearchOutcome.degraded` lists failing sources in order
+  `("musicbrainz", "deezer")`; `ImportedAlbum` carries both
+  `musicbrainz_release_group_id` and `deezer_id` (either may be `None`).
+- **Notes for frontend/API:** merged search rows are `source="musicbrainz"`
+  carrying `deezer_id`; MB-only rows have `cover_url=None`; Deezer-only rows
+  have `year=None` — UI must render missing cover/year gracefully.

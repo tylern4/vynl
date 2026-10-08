@@ -1,0 +1,27 @@
+{
+  "id": "b9d5f8c0-4e2a-4f6a-9a5e-1d2c3b4a5e6f",
+  "title": "Discovery",
+  "primary-type": "Album",
+  "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+  "first-release-date": "2001-03-07",
+  "artist-credit": [
+    {
+      "name": "Daft Punk",
+      "artist": {
+        "id": "755f4e4e-1f5a-4c4a-9d1c-9f0e2d3b4a5c",
+        "name": "Daft Punk",
+        "sort-name": "Daft Punk"
+      }
+    }
+  ],
+  "releases": [
+    {
+      "id": "c0ffee00-1111-4222-8333-444455556666",
+      "title": "Discovery",
+      "status": "Official",
+      "status-id": "4e304316-386d-3409-af2e-50facec439d1",
+      "date": "2001-03-07",
+      "country": "FR"
+    }
+  ]
+}
