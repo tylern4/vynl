@@ -10,3 +10,5 @@ dist/
 *.tsbuildinfo
 *.log
 .DS_Store
+# local-only host-port remap (see docker-compose.override.yml)
+docker-compose.override.yml

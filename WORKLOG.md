@@ -376,3 +376,115 @@ shipped, decisions made, anything the next agent needs to know.
   admin page or simplifying registration policy for a single-user shelf app.
 - Process lesson: agents doing live smoke checks should use a scratch DB
   (`vynl_smoke`), not the owner's dev DB; note in future issue briefs.
+
+## 2026-10-08 — Issue #7 integration — agent-integration-7
+
+- **Shipped:** `.github/workflows/ci.yml` (reference pattern adapted: Postgres 16
+  service + Python 3.12 + pip cache + `pytest` in `backend/`; Node 20 + `npm ci` +
+  `npm test` + `npm run build` in `frontend/`; buildx + GHCR `latest`/`$sha` push
+  on `main`, `permissions: contents: read, packages: write`, concurrency
+  cancel-in-progress), `scripts/smoke.sh` (**local-only**, live provider calls),
+  full `README.md` rewrite (verified quickstart, architecture + config tables,
+  development/testing, troubleshooting, screenshots), `docs/screenshots/*.png` (5
+  shots), `backend/Dockerfile` +`RUN mkdir -p /app/covers`, `.gitignore` +=
+  `docker-compose.override.yml`.
+- **Compose hardening:** `docker-compose.yml` already matched PLAN §8 (verified
+  `docker compose config`); only Dockerfile covers-dir line added. Artwork
+  survives recreation — verified cover bytes identical across
+  `docker compose restart backend`.
+- **Ports 8000/8080 occupied on this host** (unrelated `python3 -m http.server`
+  + `cadvisor`) → created a **gitignored** `docker-compose.override.yml` that
+  remaps **host ports only** (backend `8001:8000`, frontend `8081:80`). Compose
+  here *appends* override `ports` entries, so the override uses the `!override`
+  merge directive (`!reset` unsupported) to replace the committed mappings.
+- **Verified live:** stack up via override (backends/nginx proxies healthy);
+  smoke.sh **16/16** incl. **admin-approval path** (new user lands `pending` on a
+  non-empty DB → script approves via admin `GET/PATCH /api/users`), live Deezer
+  import (12 tracks), cover bytes 200 image/jpeg **direct and through nginx
+  proxy**, tags replace, backdated play → dusty reason, frontend shell. CI commands
+  run locally: backend `pytest` 172 passed, frontend `npm ci`/`npm test` 92
+  passed/`npm run build` green. Decimal note: committed-only compose still binds
+  8000/8080 (`docker compose -f docker-compose.yml config` checked).
+- **Screenshots:** Playwright 1.64 headless chromium installed in a scratch dir
+  under /tmp (NOT added to `frontend/package.json`, so CI `npm ci` stays lean),
+  drove the real UI (login → shelf → detail → add search → find → recommend) at
+  1280 px. Seeded `shelf-demo@example.com` with 7 live-imported albums + tags +
+  backdated plays + a note for a realistic shelf; recommend shot filtered to a
+  tag so every card shows reason + "N days since spun" badge. PNGs verified by
+  element-wait + text assertions, not by eye.
+- **Docs truth-checked** while writing the README: PLAN §5 still matches
+  `backend/src/routers/*.py` + `frontend/src/api.ts` (no PLAN edits), and
+  `.env.example` satisfies every `:?`-required compose var. Note: a literal
+  `cp .env.example .env` keeps the placeholder `JWT_SECRET`, which the backend
+  **refuses at startup by design** — README quickstart/troubleshooting cover it.
+- **Open items for the user/coordinator:** merge to `main` then push a PR/commit
+  so GitHub runs both test jobs and the GHCR `build-and-push` (no extra secrets;
+  `packages: write` comes from `GITHUB_TOKEN`). Refresh screenshots after #8
+  polish if UI changes meaningfully. Dev DB now holds owner + `shelf-demo`
+  (7-album screenshot catalog) only — the throwaway smoke users created during
+  this issue's live runs were removed after the smoke passes; per the
+  coordinator's hygiene note / **issue #9**, future live smoke runs should use a
+  scratch DB (`vynl_smoke`), and the screenshot catalog itself can be dropped
+  once screenshots are final.
+
+## 2026-10-08 — Issue #8 polish — agent-polish-8
+
+- Shipped the full polish pass across all five pages + shared components +
+  `styles.css`. All acceptance boxes in `docs/issues/008-polish.md` checked;
+  `npm test` **95 passed** (was 92: +3 new tests, 1 extended) + `npm run build`
+  green. No backend/API/type renames; no feature-logic refactors.
+- **Responsive (360/768/1280):** verified/normalized breakpoints — shelf grid
+  `auto-fill minmax(130px,1fr)` ≤640, detail grid stacks ≤640 (cover above
+  info/tracklist), tracklist wrapped in `.tracklist-scroll` (`overflow-x` +
+  table `min-width:420px` → never squashed), add/find result rows wrap ≤480
+  (cover+info line, badge+button line), rec cards stack ≤640, topbar nav wraps to
+  its own scrollable row ≤640. Loading skeletons mirror the real grids at every
+  breakpoint.
+- **Loading:** replaced text placeholders with pulse skeletons — 6-card shelf
+  skeleton (`data-testid="shelf-skeleton"`) + detail skeleton
+  (`detail-skeleton`); rec already had skeletons; search-as-you-type keeps stale
+  results visible while “Searching…” (`role="status"`) shows.
+- **Empty/error:** verified every empty state (shelf CTA, add/find no-results,
+  no tags yet via TagEditor, no plays yet, rec empty + tag-filter-empty). Find
+  gained per-section **Retry songs / Retry albums** (new `searchKey`; errors
+  cleared on re-run; try/finally guarantees `searching` always settles → no
+  infinite spinner). Add-album import failures now show a “what to try next”
+  hint under the row error (`.result-hint`). 401 mid-session redirect already
+  handled by `api.ts`.
+- **Dark-mode audit:** every component-level hex removed — all colors live in
+  `:root` theme tokens. Split `--accent` (interactive bg, pairs with new
+  `--on-accent`) from `--accent-ink` (foreground links/icons — brighter warm
+  orange in dark). New themed `--mb`/`--mb-border` (MusicBrainz badge).
+  Computed contrast: light muted 3.63→4.92, light button text 3.31→4.58, dark
+  button text 2.65→4.58, MB badge 3.66→5.31, hover 5.84. No filters/opacity on
+  cover art in either theme — nothing washed out.
+- **No theme flash:** inline `data-theme` script in `index.html` head runs before
+  first paint (localStorage → `prefers-color-scheme` fallback), in sync with
+  `theme.tsx`/`main.tsx`.
+- **A11y:** uniform nav icons (Library/Plus/Search/Dices, all 15 px,
+  `aria-hidden`) + `aria-label` on nav; `:focus-visible` expanded to every link
+  and `.tag-chip-remove` (uses `--accent-ink`); `color: inherit` on
+  `a.tag-chip-link`/`.rec-cover-link` (no stray default-blue); `aria-live
+  ="polite"` on shelf grid, add results, find sections, rec grid, play history;
+  `role="status"` on searching hints; Register pending/hint copy moved off inline
+  styles onto token classes (`.auth-pending`/`.field-note`).
+- **#6 handoff notes, each verified:** (1) nav icons — done. (2) auto-spin vs
+  filter debounce — kept auto-spin-on-mount, did **not** add a debounce:
+  `changeMode`/`pickTag` already invalidate in-flight requests via the request
+  seq ref and land on an explicit idle prompt, so there is no request storm.
+  (3) the `<`-`>` card pair never shipped in the current code (cards use labeled
+  “Spun it”/“Show me another” buttons, already focus-visible). (4) tiny-shelf
+  reroll repeats are now explained — a `Tiny shelf — rerolls fall back to
+  repeats` note (`.rec-repeat`) appears when a reroll has to accept a card
+  already on screen. (5) `.rec-*` styles audited for 640 px + dark mode.
+- **Conscious deferrals (noted in issue file too):** no global fetch timeouts —
+  every promise clears its spinner on settle via `finally`/`.catch`, but a
+  never-resolving connection could still hang (flagged for later); rec-card
+  shared-component extraction (#6’s question) left out to keep this pass
+  presentation-only; shelf tag-filter with zero tags intentionally shows just the
+  “All” chip (“no tags yet” copy lives in the TagEditor, where tags are made).
+- **For coordinator/user:** #7’s 1280 px screenshots predate this pass — theme
+  tokens, nav icons, skeleton loaders, and the tracklist wrapper change the
+  visuals meaningfully, so the README screenshots should be refreshed (Playwright
+  scratch setup is described in the #7 entry; not re-run here). No dev-DB changes
+  made (dev-server-only check), so the post-#7/#8 cleanup plan stands.
