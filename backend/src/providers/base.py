@@ -61,3 +61,11 @@ class ImportedAlbum:
     cover_url: str | None = None
     metadata: dict = field(default_factory=dict)
     tracks: list[TrackInput] = field(default_factory=list)
+    # Source provenance for the import preview (issue #13): which provider fed
+    # each part of the assembled album, plus the full tracklist of every source
+    # that contributed one (so a preview can let the user compare them). Import
+    # itself keeps reading only `.tracks` — these are additive.
+    metadata_source: str | None = None
+    tracklist_source: str | None = None
+    artwork_source: str | None = None
+    tracklists_by_source: dict[str, list[TrackInput]] = field(default_factory=dict)

@@ -21,9 +21,12 @@ from ..models import Album, Play, Tag, Track, User, album_tags
 from ..schemas import (
     AlbumImportRequest,
     AlbumOut,
+    AlbumPreviewOut,
+    AlbumSourceBreakdown,
     AlbumUpdate,
     PlayCreate,
     PlayOut,
+    TrackPreviewOut,
     album_to_out,
 )
 from ..services import artwork
@@ -79,6 +82,63 @@ def _conflict(existing: Album) -> HTTPException:
         status_code=status.HTTP_409_CONFLICT,
         detail=f"Album already in your shelf (id={existing.id})",
     )
+
+
+def _preview_to_out(imported: providers.ImportedAlbum) -> AlbumPreviewOut:
+    """Map an assembled ImportedAlbum onto the dry-run AlbumPreviewOut (#13)."""
+
+    def track(track: providers.TrackInput) -> TrackPreviewOut:
+        return TrackPreviewOut(
+            position=track.position,
+            title=track.title,
+            duration_seconds=track.duration_seconds,
+        )
+
+    return AlbumPreviewOut(
+        source=imported.source,
+        external_id=imported.external_id,
+        title=imported.title,
+        artist=imported.artist,
+        year=imported.year,
+        label=imported.label,
+        country=imported.country,
+        cover_url=imported.cover_url,
+        track_count=len(imported.tracks),
+        tracks=[track(t) for t in sorted(imported.tracks, key=lambda t: t.position)],
+        source_breakdown=AlbumSourceBreakdown(
+            metadata_source=imported.metadata_source,
+            tracklist_source=imported.tracklist_source,
+            artwork_source=imported.artwork_source,
+        ),
+        tracklists_by_source={
+            name: [track(t) for t in tracks]
+            for name, tracks in imported.tracklists_by_source.items()
+        },
+    )
+
+
+@router.post("/preview", response_model=AlbumPreviewOut)
+def preview_album(
+    payload: AlbumImportRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    """Dry-run of import (issue #13): assemble what would be persisted — provably
+    read-only. Same body and error mapping as import, but no DB write and no
+    409, so previewing an album that is already on the shelf still works.
+    """
+    try:
+        imported = providers.import_album(payload.source, payload.external_id)
+    except providers.NotFound as exc:  # NotFound subclasses ProviderError
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Album not found at the provider: {exc.reason}",
+        )
+    except providers.ProviderError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Provider error: {exc.reason}",
+        )
+    return _preview_to_out(imported)
 
 
 @router.post("/import", response_model=AlbumOut, status_code=status.HTTP_201_CREATED)

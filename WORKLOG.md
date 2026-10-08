@@ -569,3 +569,60 @@ shipped, decisions made, anything the next agent needs to know.
   edits beyond the §7 paragraph. The docker `vynl-frontend` container on :8081
   still serves the stale #7-era build — `npm run dev` on 5173 (or a rebuild)
   is the current source of truth. Dev server was stopped after verification.
+
+## 2026-10-08 — Issue #13 import preview — agent-preview-13
+
+- Shipped the **dry-run import preview**: `POST /api/albums/preview` (body
+  `{source, external_id}`, auth via `get_current_user` — read-only, **not**
+  `require_write`). It runs the *identical* `providers.import_album` assembly (incl.
+  twin discovery) and returns what import would persist, with **no DB writes and no
+  dedup/409 check** — preview works even when the album is already on the shelf.
+  Errors map like import: `NotFound` → 404 `"Album not found at the provider: …"`,
+  other `ProviderError` → 502. The route takes **no `db` dependency** (provably
+  read-only).
+- **Provider layer (additive, import behavior unchanged):** `ImportedAlbum` gained
+  `metadata_source`, `tracklist_source`, `artwork_source` (`str | None`) and
+  `tracklists_by_source: dict[str, list[TrackInput]]`. `_assemble()` fills them:
+  `metadata_source` = `"musicbrainz"` if MB present else `"deezer"` if Deezer else
+  `None`; `tracklist_source` = `"deezer"` when Deezer tracks win (§6 preference)
+  else `"musicbrainz"` if MB tracks else `None`; `artwork_source` = `"deezer"` if
+  the Deezer cover URL was used else `"cover_art_archive"` if CAA resolved it else
+  `None`; `tracklists_by_source` = each contributing source's non-empty tracklist
+  (preferred always included; `.tracks` stays the preferred source's list — import
+  code untouched).
+- Schemas: `TrackPreviewOut`, `AlbumSourceBreakdown` (serializes identical to a
+  plain dict), `AlbumPreviewOut` in `schemas.py`; `routers/albums.py` gained
+  `POST /albums/preview` + `_preview_to_out()`. Breakdown fields are preview-only —
+  import responses stay byte-identical.
+- **Frontend:** `types.ts` `TrackPreview`/`AlbumSourceBreakdown`/`AlbumPreview`,
+  `api.previewAlbum()`; new **`AlbumPreviewModal.tsx`**. Search-result **titles in
+  `/add` are now buttons** (`aria-label` `Preview “{title}” by {artist}`) that open
+  the modal for that row (fast-path import button kept; one modal at a time).
+  Modal: `role="dialog"`/`aria-modal`/`aria-labelledby`, Esc + backdrop + close
+  button, focus in on open / restored on close, body scroll locked; `CoverImage`
+  (preview `cover_url`) + metadata line + `SourceBadge` + `.tracklist-scroll`-
+  wrapped tracklist with `format.ts` durations; **Sources** section shows breakdown
+  badges ("Metadata from MusicBrainz", … skipping null parts) and, when >1 source
+  has a tracklist, a **tracklist source toggle** ("Deezer · 16 tracks" /
+  "MusicBrainz · 14 tracks", preferred preselected, persists in state — the
+  wrong-pressing tell); footer Cancel + Import via `api.importAlbum` with pending
+  state, success → "On your shelf — view" link to `/album/{id}`, 409 → the same
+  inline already-in-shelf state as AddAlbumPage (reuses `parseConflictId`, simply
+  **exported** from `AddAlbumPage.tsx` — ESM cycle verified via tests + build),
+  other errors inline with retry; inline preview loading + error/Retry.
+- **Tests:** backend +10 in `test_albums.py` (preview == real import of the same
+  ids, no row persisted, merged/MB-only/Deezer-only breakdowns, `tracklists_by_source`
+  both-vs-single, tracks sorted by position, 404, 502, 422, read-only preview 200,
+  no-409-when-already-on-shelf) + preview in the read-only auth sweep + breakdown
+  assertions in 4 provider import tests → **182 passed** (was 172). Frontend:
+  `AlbumPreviewModal.test.tsx` (7) + AddAlbumPage title-click + api `previewAlbum`
+  tests → **117 passed** (was 108), `npm run build` green.
+- **Docs:** PLAN §5 preview endpoint row + `AlbumPreviewOut` jsonc, §6
+  source-breakdown paragraph, §7 preview modal on the Add page; README feature
+  bullet. `docs/issues/013-import-preview.md` Acceptance criteria all checked,
+  `Status: done`; ISSUES.md index row flipped to done.
+- **Deviations from spec:** none. For #12 (more providers): preview/breakdown/
+  `tracklists_by_source` are source-agnostic — only the `source` `Literal` in
+  `AlbumImportRequest` needs extending when itunes/discogs land. Docker frontend on
+  :8081 still serves a stale pre-#8 build; frontend checks used `npm run dev` on
+  5173 (stopped after verification).

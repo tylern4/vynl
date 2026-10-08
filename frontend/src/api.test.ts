@@ -92,6 +92,18 @@ describe('request', () => {
     ).rejects.toThrow('Already on your shelf (album 12)')
   })
 
+  it('posts the payload to /albums/preview for previewAlbum', async () => {
+    mockFetch(200, { title: 'Remain in Light', tracks: [] })
+    await api.previewAlbum({ source: 'deezer', external_id: '302127' })
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/albums/preview',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ source: 'deezer', external_id: '302127' }),
+      }),
+    )
+  })
+
   it('throws ApiError with the status code', async () => {
     mockFetch(500, { detail: 'boom' })
     const error = await api

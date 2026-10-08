@@ -72,6 +72,39 @@ export interface AlbumImport {
   external_id: string
 }
 
+/** One dry-run track from `POST /albums/preview` (issue #13). */
+export interface TrackPreview {
+  position: number
+  title: string
+  duration_seconds: number | null
+}
+
+/** Which provider fed each part of an assembled (dry-run) album (#13). */
+export interface AlbumSourceBreakdown {
+  metadata_source: string | null
+  tracklist_source: string | null
+  artwork_source: string | null
+}
+
+/**
+ * Dry-run of what importing `{source, external_id}` would persist (#13).
+ * Same shape the import would create, plus per-source provenance.
+ */
+export interface AlbumPreview {
+  source: AlbumSource
+  external_id: string
+  title: string
+  artist: string
+  year: number | null
+  label: string | null
+  country: string | null
+  cover_url: string | null
+  track_count: number
+  tracks: TrackPreview[]
+  source_breakdown: AlbumSourceBreakdown
+  tracklists_by_source: Record<string, TrackPreview[]>
+}
+
 export interface AlbumUpdate {
   favorite?: boolean
   note?: string | null

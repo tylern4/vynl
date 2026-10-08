@@ -252,6 +252,35 @@ def _assemble(
     if genres:
         metadata["genres"] = genres
 
+    # Source provenance (issue #13, additive — import behavior unchanged):
+    # the breakdown mirrors exactly how tracks/artwork/metadata were chosen.
+    if deezer_album is not None and deezer_album.tracks:
+        tracklist_source = "deezer"  # preferred tracklist when both (§6)
+    elif mb is not None and mb.tracks:
+        tracklist_source = "musicbrainz"
+    else:
+        tracklist_source = None
+
+    cover_url = coverart.resolve_cover(
+        deezer_cover=deezer_cover,
+        release_group_id=rg_id,
+        release_id=mb.release_id if mb is not None else None,
+    )
+    if deezer_cover:
+        artwork_source = "deezer"
+    elif cover_url is not None:
+        artwork_source = "cover_art_archive"
+    else:
+        artwork_source = None
+
+    # Every contributing source's full tracklist (non-empty only); the
+    # preferred one is always included so the preview can compare pressings.
+    tracklists_by_source: dict[str, list[TrackInput]] = {}
+    if deezer_album is not None and deezer_album.tracks:
+        tracklists_by_source["deezer"] = deezer_album.tracks
+    if mb is not None and mb.tracks:
+        tracklists_by_source["musicbrainz"] = mb.tracks
+
     return ImportedAlbum(
         source=source,
         external_id=external_id,
@@ -266,11 +295,13 @@ def _assemble(
         country=country,
         musicbrainz_release_group_id=rg_id,
         deezer_id=deezer_id,
-        cover_url=coverart.resolve_cover(
-            deezer_cover=deezer_cover,
-            release_group_id=rg_id,
-            release_id=mb.release_id if mb is not None else None,
-        ),
+        cover_url=cover_url,
         metadata=metadata,
         tracks=tracks,
+        metadata_source="musicbrainz" if mb is not None else (
+            "deezer" if deezer_album is not None else None
+        ),
+        tracklist_source=tracklist_source,
+        artwork_source=artwork_source,
+        tracklists_by_source=tracklists_by_source,
     )

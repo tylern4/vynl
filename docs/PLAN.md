@@ -232,6 +232,7 @@ being down: returns the other's results with a `degraded` flag in headers
 | Method & path | Body | Response |
 | --- | --- | --- |
 | `POST /api/albums/import` | `{source, external_id}` | `AlbumOut` (201; **409** if already in the user's shelf) |
+| `POST /api/albums/preview` | `{source, external_id}` | `AlbumPreviewOut` — a **dry-run** of import: same assembly code path (incl. twin discovery), but **no album row is created and no 409 is raised** (works for albums already on the shelf); `NotFound` → 404, other provider errors → 502, exactly like import (issue #13) |
 | `GET /api/albums` | `q`, `tag`, `favorite`, `sort` (`added`\|`title`\|`artist`\|`year`\|`played`), `limit`, `offset` | `AlbumOut[]` (without tracks) |
 | `GET /api/albums/{id}` | — | `AlbumOut` **with `tracks[]`** |
 | `PATCH /api/albums/{id}` | `{favorite?, note?, year?, label?}` | `AlbumOut` |
@@ -259,6 +260,31 @@ being down: returns the other's results with a `degraded` flag in headers
   "tracks": [                      // only on GET /api/albums/{id}
     {"id": 10, "position": 1, "title": "Born Under Punches", "duration_seconds": 349}
   ]
+}
+```
+
+```jsonc
+// AlbumPreviewOut — POST /api/albums/preview (dry-run; issue #13)
+{
+  "source": "musicbrainz",
+  "external_id": "…mbid…",
+  "title": "Remain in Light",
+  "artist": "Talking Heads",
+  "year": 1980,
+  "label": "Sire",
+  "country": "US",
+  "cover_url": "https://…",
+  "track_count": 8,
+  "tracks": [{"position": 1, "title": "Born Under Punches", "duration_seconds": 349}],
+  "source_breakdown": {            // which provider fed each part (all nullable)
+    "metadata_source": "musicbrainz",
+    "tracklist_source": "deezer",
+    "artwork_source": "deezer"
+  },
+  "tracklists_by_source": {        // each contributing source's tracklist
+    "deezer": [{"position": 1, "title": "Born Under Punches", "duration_seconds": 349}],
+    "musicbrainz": [{"position": 1, "title": "Born Under Punches", "duration_seconds": 344}]
+  }
 }
 ```
 
@@ -340,7 +366,12 @@ def import_album(source: str, external_id: str) -> ImportedAlbum: ...  # raises 
 
 `SearchResult` and `ImportedAlbum` are plain dataclasses defined in `base.py`
 (artwork URL, title/artist/year/label, and for import: full metadata + tracks with
-durations in seconds + cover URL).
+durations in seconds + cover URL). Since issue #13, `ImportedAlbum` also carries
+additive **source-breakdown fields** — `metadata_source`, `tracklist_source`,
+`artwork_source` (each a provider name or `None`) and a per-source
+`tracklists_by_source: dict[str, list[TrackInput]]` — so the import preview can
+say which provider fed each part. They are filled in by `_assemble()` and import
+behavior is unchanged (it still reads only `.tracks`).
 
 ### MusicBrainz
 
@@ -408,7 +439,7 @@ Routes (react-router, `ProtectedRoute` wrapper same as reference):
 | `/login`, `/register` | auth pages | invite-code registration, identical flow to reference |
 | `/` | `ShelfPage` | responsive cover grid ("the shelf"); instant filter box; tag chips sidebar/dropdown; sort selector; favorite toggle |
 | `/album/:id` | `AlbumDetailPage` | large cover, metadata, **tracklist table** (position, title, length m:ss), tag editor (add/remove chips), "I spun this" play button + play history, edit note/favorite, remove from shelf |
-| `/add` | `AddAlbumPage` | search box → merged results from `/api/search/albums` → one-click import with progress state; shows which source; already-added state |
+| `/add` | `AddAlbumPage` | search box → merged results from `/api/search/albums` → one-click import with progress state; shows which source; already-added state; **clicking a result title opens the import-preview modal** (`POST /api/albums/preview`) showing the cover, full tracklist (with a per-source tracklist toggle when both providers have one), and which provider fed each part before you commit (issue #13) |
 | `/find` | `FindPage` | library-wide song/album/tag search across `/api/tracks` + `/api/albums`; results show song → its album; click through to detail |
 | `/recommend` | `RecommendPage` | mode toggle (`dusty` / `random`), optional tag filter, big "Spin" button → recommendation card with reason + "Spun it" action |
 

@@ -192,6 +192,7 @@ def mock_artwork(monkeypatch):
 ALL_ENDPOINTS = [
     ("GET", "/api/search/albums?q=x", None),
     ("POST", "/api/albums/import", {"source": "deezer", "external_id": "1"}),
+    ("POST", "/api/albums/preview", {"source": "deezer", "external_id": "1"}),
     ("GET", "/api/albums", None),
     ("GET", "/api/albums/1", None),
     ("PATCH", "/api/albums/1", {"favorite": True}),
@@ -392,6 +393,228 @@ def test_import_does_not_leak_other_users_shelves(
     assert mine.status_code == 201
     assert theirs.status_code == 201
     assert mine.json()["id"] != theirs.json()["id"]
+
+
+# --- import preview (issue #13) ---------------------------------------------
+
+
+def _preview_payload(source="deezer", external_id="302127"):
+    return {"source": source, "external_id": external_id}
+
+
+def test_preview_matches_a_real_import(
+    client, headers, db_session, mock_import, mock_artwork
+):
+    mock_import.install()
+    mock_artwork.install()
+    payload = _preview_payload()
+
+    imported = client.post("/api/albums/import", json=payload, headers=headers)
+    assert imported.status_code == 201
+    body = imported.json()
+
+    res = client.post("/api/albums/preview", json=payload, headers=headers)
+    assert res.status_code == 200
+    preview = res.json()
+    # Same identity, metadata, and tracklist as a real import of the same id.
+    for field in (
+        "source", "external_id", "title", "artist", "year", "label",
+        "country", "cover_url", "track_count",
+    ):
+        assert preview[field] == body[field], field
+    assert preview["tracks"] == [
+        {k: t[k] for k in ("position", "title", "duration_seconds")}
+        for t in body["tracks"]
+    ]
+    assert mock_import.calls == [("deezer", "302127"), ("deezer", "302127")]
+
+
+def test_preview_persists_no_album_row(client, headers, db_session, mock_import):
+    mock_import.install()
+    before = db_session.query(Album).count()
+    res = client.post("/api/albums/preview", json=_preview_payload(), headers=headers)
+    assert res.status_code == 200
+    assert db_session.query(Album).count() == before  # no row, no HTTP side effect
+
+
+def test_preview_breakdown_merged(client, headers, mock_import):
+    # MB metadata + Deezer tracklist/cover, both tracklists contributed.
+    mock_import.install(
+        factory=lambda s, e_id: provider_album(
+            source=s,
+            external_id=e_id,
+            metadata_source="musicbrainz",
+            tracklist_source="deezer",
+            artwork_source="deezer",
+            tracklists_by_source={
+                "deezer": [
+                    TrackInput(1, "Born Under Punches", 349),
+                    TrackInput(2, "Crosseyed and Painless", 285),
+                ],
+                "musicbrainz": [
+                    TrackInput(1, "Born Under Punches", 349),
+                    TrackInput(2, "Crosseyed and Painless", 285),
+                    TrackInput(3, "The Great Curve", 263),
+                ],
+            },
+        )
+    )
+    res = client.post("/api/albums/preview", json=_preview_payload(), headers=headers)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["source_breakdown"] == {
+        "metadata_source": "musicbrainz",
+        "tracklist_source": "deezer",
+        "artwork_source": "deezer",
+    }
+    assert sorted(body["tracklists_by_source"]) == ["deezer", "musicbrainz"]
+    assert [t["title"] for t in body["tracklists_by_source"]["deezer"]] == [
+        "Born Under Punches",
+        "Crosseyed and Painless",
+    ]
+    assert len(body["tracklists_by_source"]["musicbrainz"]) == 3
+    # The main tracklist is the preferred (Deezer) one.
+    assert [t["title"] for t in body["tracks"]] == [
+        "Born Under Punches",
+        "Crosseyed and Painless",
+    ]
+
+
+def test_preview_breakdown_single_source(client, headers, mock_import):
+    # MusicBrainz-only: metadata + tracklist from MB, no artwork anywhere.
+    mock_import.install(
+        factory=lambda s, e_id: provider_album(
+            source=s,
+            external_id=e_id,
+            metadata_source="musicbrainz",
+            tracklist_source="musicbrainz",
+            artwork_source=None,
+            tracks=[TrackInput(1, "Only Track", 222)],
+            tracklists_by_source={"musicbrainz": [TrackInput(1, "Only Track", 222)]},
+        )
+    )
+    res = client.post(
+        "/api/albums/preview",
+        json=_preview_payload("musicbrainz", "mbid-1"),
+        headers=headers,
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["source_breakdown"] == {
+        "metadata_source": "musicbrainz",
+        "tracklist_source": "musicbrainz",
+        "artwork_source": None,
+    }
+    assert list(body["tracklists_by_source"]) == ["musicbrainz"]
+
+    # Deezer-only: everything from Deezer, only its tracklist contributed.
+    mock_import.install(
+        factory=lambda s, e_id: provider_album(
+            source=s,
+            external_id=e_id,
+            metadata_source="deezer",
+            tracklist_source="deezer",
+            artwork_source="deezer",
+            tracks=[
+                TrackInput(1, "One More Time", 320),
+                TrackInput(2, "Aerodynamic", 207),
+            ],
+            tracklists_by_source={
+                "deezer": [
+                    TrackInput(1, "One More Time", 320),
+                    TrackInput(2, "Aerodynamic", 207),
+                ]
+            },
+        )
+    )
+    res = client.post("/api/albums/preview", json=_preview_payload(), headers=headers)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["source_breakdown"] == {
+        "metadata_source": "deezer",
+        "tracklist_source": "deezer",
+        "artwork_source": "deezer",
+    }
+    assert list(body["tracklists_by_source"]) == ["deezer"]
+    assert body["track_count"] == 2
+    assert body["tracks"][0]["title"] == "One More Time"
+
+
+def test_preview_tracks_are_sorted_by_position(client, headers, mock_import):
+    mock_import.install(
+        factory=lambda s, e_id: provider_album(
+            source=s,
+            external_id=e_id,
+            metadata_source="deezer",
+            tracklist_source="deezer",
+            artwork_source="deezer",
+            tracks=[
+                TrackInput(3, "Third", 100),
+                TrackInput(1, "First", 100),
+                TrackInput(2, "Second", 100),
+            ],
+            tracklists_by_source={
+                "deezer": [
+                    TrackInput(3, "Third", 100),
+                    TrackInput(1, "First", 100),
+                    TrackInput(2, "Second", 100),
+                ]
+            },
+        )
+    )
+    res = client.post("/api/albums/preview", json=_preview_payload(), headers=headers)
+    assert res.status_code == 200
+    assert [t["position"] for t in res.json()["tracks"]] == [1, 2, 3]
+
+
+def test_preview_not_found_is_404(client, headers, mock_import):
+    mock_import.install(error=NotFound("unknown album id 999"))
+    res = client.post(
+        "/api/albums/preview", json=_preview_payload("deezer", "999"), headers=headers
+    )
+    assert res.status_code == 404
+    assert "unknown album id 999" in res.json()["detail"]
+
+
+def test_preview_provider_error_is_502(client, headers, mock_import):
+    mock_import.install(error=ProviderError("deezer rate limited"))
+    res = client.post("/api/albums/preview", json=_preview_payload(), headers=headers)
+    assert res.status_code == 502
+    assert "deezer rate limited" in res.json()["detail"]
+
+
+def test_preview_rejects_unknown_source(client, headers, mock_import):
+    mock_import.install()
+    res = client.post(
+        "/api/albums/preview",
+        json={"source": "spotify", "external_id": "x"},
+        headers=headers,
+    )
+    assert res.status_code == 422
+    assert mock_import.calls == []  # rejected before touching the provider
+
+
+def test_preview_allowed_for_read_only(client, readonly_headers, mock_import):
+    """Preview is read-only: read_only accounts may preview (unlike import)."""
+    mock_import.install()
+    res = client.post(
+        "/api/albums/preview", json=_preview_payload(), headers=readonly_headers
+    )
+    assert res.status_code == 200
+
+
+def test_preview_does_not_409_when_already_on_shelf(
+    client, headers, mock_import, mock_artwork
+):
+    mock_import.install()
+    mock_artwork.install()
+    payload = _preview_payload()
+    first = client.post("/api/albums/import", json=payload, headers=headers)
+    assert first.status_code == 201
+    # Import of the same id would 409; the preview must still work.
+    res = client.post("/api/albums/preview", json=payload, headers=headers)
+    assert res.status_code == 200
+    assert res.json()["title"] == "Remain in Light"
 
 
 # --- list --------------------------------------------------------------------

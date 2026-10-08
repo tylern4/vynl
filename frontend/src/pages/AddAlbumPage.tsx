@@ -6,6 +6,7 @@ import { useAuth } from '../auth'
 import type { SearchResult } from '../types'
 import { CoverImage } from '../components/CoverImage'
 import { SourceBadge } from '../components/SourceBadge'
+import { AlbumPreviewModal } from '../components/AlbumPreviewModal'
 
 const DEBOUNCE_MS = 300
 
@@ -15,7 +16,7 @@ type RowStatus =
   | { kind: 'added'; albumId: number; already: boolean }
   | { kind: 'error'; message: string }
 
-function parseConflictId(message: string): number | null {
+export function parseConflictId(message: string): number | null {
   // Backend 409 detail: "Album already in your shelf (id=12)"
   const match = /\(id=(\d+)\)/.exec(message)
   return match ? Number(match[1]) : null
@@ -29,6 +30,7 @@ export function AddAlbumPage() {
   const [searchError, setSearchError] = useState<string | null>(null)
   const [rows, setRows] = useState<Record<string, RowStatus>>({})
   const [searchKey, setSearchKey] = useState(0)
+  const [previewRow, setPreviewRow] = useState<SearchResult | null>(null)
   const latestQuery = useRef('')
 
   // Debounced external search; stale responses are dropped.
@@ -167,7 +169,14 @@ export function AddAlbumPage() {
                   className="result-cover"
                 />
                 <div className="result-info">
-                  <span className="result-title">{result.title}</span>
+                  <button
+                    type="button"
+                    className="result-title result-title-btn"
+                    aria-label={`Preview ${result.title} by ${result.artist}`}
+                    onClick={() => setPreviewRow(result)}
+                  >
+                    {result.title}
+                  </button>
                   <span className="result-sub">
                     {result.artist}
                     {result.year ? ` · ${result.year}` : ''}
@@ -231,6 +240,10 @@ export function AddAlbumPage() {
             )
           })}
         </ul>
+      )}
+
+      {previewRow && (
+        <AlbumPreviewModal row={previewRow} onClose={() => setPreviewRow(null)} />
       )}
     </div>
   )

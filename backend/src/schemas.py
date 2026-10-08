@@ -83,6 +83,50 @@ class AlbumImportRequest(BaseModel):
     external_id: str = Field(min_length=1, max_length=64)
 
 
+class TrackPreviewOut(BaseModel):
+    """One dry-run track (issue #13); mirrors the TrackInput dataclass."""
+
+    position: int
+    title: str
+    duration_seconds: int | None = None
+
+
+class AlbumSourceBreakdown(BaseModel):
+    """Which provider fed each part of an assembled (dry-run) album (#13).
+
+    Any field may be ``None`` when that part has no source (e.g. no artwork
+    anywhere). Values are provider names: ``"musicbrainz"``, ``"deezer"``,
+    ``"cover_art_archive"``.
+    """
+
+    metadata_source: str | None = None
+    tracklist_source: str | None = None
+    artwork_source: str | None = None
+
+
+class AlbumPreviewOut(BaseModel):
+    """Dry-run of what importing {source, external_id} would persist (#13).
+
+    Same assembly code path as import (incl. twin discovery), but nothing is
+    written and no 409 is raised — the frontend shows this before committing.
+    """
+
+    source: str
+    external_id: str
+    title: str
+    artist: str
+    year: int | None = None
+    label: str | None = None
+    country: str | None = None
+    cover_url: str | None = None
+    track_count: int
+    tracks: list[TrackPreviewOut] = Field(default_factory=list)
+    source_breakdown: AlbumSourceBreakdown
+    tracklists_by_source: dict[str, list[TrackPreviewOut]] = Field(
+        default_factory=dict
+    )
+
+
 class TrackOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

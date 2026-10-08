@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { Album, SearchResult } from '../types'
@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => {
   const api = {
     searchAlbums: vi.fn(),
     importAlbum: vi.fn(),
+    previewAlbum: vi.fn(),
     getCoverUrl: vi.fn((id: number) => `/api/albums/${id}/cover`),
     getCoverBlob: vi.fn().mockResolvedValue(null),
   }
@@ -83,6 +84,7 @@ beforeEach(() => {
   mocks.useAuth.mockReset()
   mocks.api.searchAlbums.mockReset()
   mocks.api.importAlbum.mockReset()
+  mocks.api.previewAlbum.mockReset()
   mocks.useAuth.mockReturnValue(defaultAuth())
 })
 
@@ -179,5 +181,53 @@ describe('AddAlbumPage', () => {
 
     await searchFor(user, 'zzz')
     expect(await screen.findByText(/Nothing found for “zzz”/)).toBeInTheDocument()
+  })
+
+  it('clicking a result title opens the import-preview modal', async () => {
+    const user = userEvent.setup()
+    mocks.api.searchAlbums.mockResolvedValue([deezerResult])
+    mocks.api.previewAlbum.mockResolvedValue({
+      source: 'deezer',
+      external_id: '302127',
+      title: 'Remain in Light',
+      artist: 'Talking Heads',
+      year: 1980,
+      label: 'Sire',
+      country: 'US',
+      cover_url: 'https://example.com/ril.jpg',
+      track_count: 1,
+      tracks: [{ position: 1, title: 'Born Under Punches', duration_seconds: 349 }],
+      source_breakdown: {
+        metadata_source: 'musicbrainz',
+        tracklist_source: 'deezer',
+        artwork_source: 'deezer',
+      },
+      tracklists_by_source: {
+        deezer: [{ position: 1, title: 'Born Under Punches', duration_seconds: 349 }],
+      },
+    })
+    renderAdd()
+
+    await searchFor(user, 'remain')
+    const titleButton = await screen.findByRole('button', {
+      name: 'Preview Remain in Light by Talking Heads',
+    })
+    await user.click(titleButton)
+
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveAccessibleName('Remain in Light')
+    await waitFor(() =>
+      expect(mocks.api.previewAlbum).toHaveBeenCalledWith({
+        source: 'deezer',
+        external_id: '302127',
+      }),
+    )
+    expect(await screen.findByText('Born Under Punches')).toBeInTheDocument()
+    // One modal at a time — the import fast path for the row stays available.
+    expect(screen.getByRole('button', { name: /Import this album/ })).toBeInTheDocument()
+
+    // Esc closes the modal again.
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })

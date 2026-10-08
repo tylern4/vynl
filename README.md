@@ -24,6 +24,10 @@ frontend, everything behind one `docker compose up`.
 
 - **Import albums** by searching MusicBrainz and Deezer side by side — results
   are merged and deduplicated, and the artwork is cached locally.
+- **Import preview** — click any search result to see exactly what importing it
+  would create (cover, metadata, tracklist with durations, and which provider
+  fed each part) before you commit, including a per-source tracklist comparison
+  when both providers offer one.
 - **Cover artwork and tracklists** — artwork from the Cover Art Archive (or
   Deezer) is stored on a Docker volume, so it survives container recreation;
   tracklists include song titles and lengths.

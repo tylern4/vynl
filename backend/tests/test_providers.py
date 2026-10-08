@@ -345,6 +345,17 @@ def test_import_musicbrainz_merges_deezer_twin():
     # Official release picked over the Promotion copy
     assert album.metadata["musicbrainz_release_id"] == REL_REMAIN
     assert album.metadata["genres"] == ["Rock"]
+    # Source breakdown (issue #13): MB metadata, Deezer tracklist + artwork.
+    assert album.metadata_source == "musicbrainz"
+    assert album.tracklist_source == "deezer"
+    assert album.artwork_source == "deezer"
+    assert set(album.tracklists_by_source) == {"musicbrainz", "deezer"}
+    assert len(album.tracklists_by_source["deezer"]) == 7
+    assert (
+        album.tracklists_by_source["deezer"][0].title
+        == "Born Under Punches (The Heat Goes On)"
+    )
+    assert album.tracks is album.tracklists_by_source["deezer"]  # preferred one
 
 
 def test_import_falls_back_to_musicbrainz_when_deezer_404s():
@@ -382,6 +393,12 @@ def test_import_falls_back_to_musicbrainz_when_deezer_404s():
     assert album.cover_url is None
     assert album.label == "Sire Records"
     assert "genres" not in album.metadata
+    # MB-only breakdown: everything from MusicBrainz, no artwork.
+    assert album.metadata_source == "musicbrainz"
+    assert album.tracklist_source == "musicbrainz"
+    assert album.artwork_source is None
+    assert list(album.tracklists_by_source) == ["musicbrainz"]
+    assert album.tracklists_by_source["musicbrainz"] == album.tracks
 
 
 def test_import_cover_falls_back_to_release_front():
@@ -402,6 +419,8 @@ def test_import_cover_falls_back_to_release_front():
     assert album.cover_url == CAA_REL_REMAIN
     assert album.deezer_id is None
     assert album.tracks[0].duration_seconds == 349
+    # Cover Art Archive resolved the artwork (no Deezer cover available).
+    assert album.artwork_source == "cover_art_archive"
 
 
 def test_import_cover_follows_redirect_but_keeps_caa_url():
@@ -509,6 +528,12 @@ def test_import_deezer_source_degrades_when_musicbrainz_down():
     assert len(album.tracks) == 4
     assert "musicbrainz_release_id" not in album.metadata
     assert album.metadata["genres"] == ["Electronic"]
+    # Deezer-only breakdown: metadata + tracklist + artwork all from Deezer.
+    assert album.metadata_source == "deezer"
+    assert album.tracklist_source == "deezer"
+    assert album.artwork_source == "deezer"
+    assert list(album.tracklists_by_source) == ["deezer"]
+    assert album.tracklists_by_source["deezer"] == album.tracks
 
 
 def test_import_deezer_not_found():

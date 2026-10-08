@@ -2,6 +2,7 @@ import type {
   Album,
   AlbumImport,
   AlbumListParams,
+  AlbumPreview,
   AlbumUpdate,
   LoginResult,
   Play,
@@ -95,6 +96,12 @@ export const api = {
   // ---- Collection ----
   importAlbum: (data: AlbumImport) =>
     request<Album>('/albums/import', { method: 'POST', body: JSON.stringify(data) }),
+  /** Dry-run preview of import (issue #13): what the album would look like. */
+  previewAlbum: (data: AlbumImport) =>
+    request<AlbumPreview>('/albums/preview', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   listAlbums: (params: AlbumListParams = {}) => {
     const qs = new URLSearchParams()
     if (params.q) qs.set('q', params.q)
