@@ -488,3 +488,27 @@ shipped, decisions made, anything the next agent needs to know.
   visuals meaningfully, so the README screenshots should be refreshed (Playwright
   scratch setup is described in the #7 entry; not re-run here). No dev-DB changes
   made (dev-server-only check), so the post-#7/#8 cleanup plan stands.
+
+## 2026-10-08 — README screenshot refresh (post-polish) — coordinator-helper
+
+- **BLOCKED — no screenshots written.** The running frontend at `:8081` serves a
+  **pre-#8 build**: its bundle (`/assets/index-bxiilNA3.js`) and index.html lack
+  every #8 marker (`data-theme` script, `shelf-skeleton`/`detail-skeleton`,
+  `tracklist-scroll`, `--accent-ink`/`--on-accent` tokens), and `vynl-frontend`
+  has no volume mounts. The `vynl-frontend` image was built 2026-10-08 19:56,
+  before the polished `frontend/dist` (built 20:15, `index-BGS8-iSt.js` +
+  `data-theme`) — so the running container bakes in the stale #7-era UI.
+  Per the brief's stop-if-stack-changed rule I did **not** rebuild/recreate the
+  container or improvise a side server. Remediation: `docker compose build
+  frontend && docker compose up -d frontend` (override remaps 8081→80), then the
+  Playwright shot script can run as-is.
+- **Everything else verified healthy for the re-run:** `/api/health` ok;
+  `shelf-demo@example.com` / `ScreenshotPass123!` still admin+active with the full
+  7-album catalog (ids 4–10, tags, backdated plays incl. Rumours 90d, DSOTM 60d,
+  Abbey Road 30d, note on DSOTM) so the shelf/detail/recommend shots will match
+  the #7 staging; live search returns MusicBrainz + Deezer rows with **no**
+  `X-Search-Degraded` header (both providers up).
+- **Re-run kit ready:** prior scratch at `/tmp/opencode/vynl-shots/` (Playwright
+  1.64 → `chromium-1248`, driven by `shots.js`, Node at `~/.local/node`); its
+  selectors match the post-#8 source except the detail wait — use `table.tracklist`
+  inside `.tracklist-scroll`; recommend shot = filter tag `classic` → Spin.
