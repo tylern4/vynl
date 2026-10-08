@@ -11,12 +11,12 @@ the coordinator commits.
 
 | # | Title | Status | Depends on | Wave | Assignee |
 | --- | --- | --- | --- | --- | --- |
-| 1 | [Backend foundation](docs/issues/001-backend-foundation.md) | open | — | 1 | — |
-| 2 | [Music providers (MusicBrainz + Deezer + CAA)](docs/issues/002-music-providers.md) | open | — | 2 | — |
-| 3 | [Collection API (import, albums, tags, plays, search, recs)](docs/issues/003-collection-api.md) | open | 1, 2 | 2 | — |
-| 4 | [Frontend foundation (scaffold, auth, theme)](docs/issues/004-frontend-foundation.md) | open | — | 1 | — |
-| 5 | [Shelf & detail UI](docs/issues/005-shelf-detail-ui.md) | open | 3, 4 | 3 | — |
-| 6 | [Recommendations UI](docs/issues/006-recommendations-ui.md) | open | 5 | 4 | — |
+| 1 | [Backend foundation](docs/issues/001-backend-foundation.md) | done | — | 1 | agent-backend-1 |
+| 2 | [Music providers (MusicBrainz + Deezer + CAA)](docs/issues/002-music-providers.md) | done | — | 2 | agent-providers-2 |
+| 3 | [Collection API (import, albums, tags, plays, search, recs)](docs/issues/003-collection-api.md) | done | 1, 2 | 2 | agent-collection-3 |
+| 4 | [Frontend foundation (scaffold, auth, theme)](docs/issues/004-frontend-foundation.md) | done | — | 1 | agent-frontend-1 |
+| 5 | [Shelf & detail UI](docs/issues/005-shelf-detail-ui.md) | done | 3, 4 | 3 | agent-shelf-5 |
+| 6 | [Recommendations UI](docs/issues/006-recommendations-ui.md) | in progress | 5 | 4 | agent-recommend-6 |
 | 7 | [Integration: compose, CI, README, smoke test](docs/issues/007-integration.md) | open | 3, 5, 6 | 5 | — |
 | 8 | [Polish: responsive, empty/error states, dark mode](docs/issues/008-polish.md) | open | 5 | 4–5 | — |
 
