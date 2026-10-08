@@ -1,5 +1,5 @@
 import { Link, Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom'
-import { Disc3, Moon, Sun } from 'lucide-react'
+import { Dices, Disc3, Moon, Sun } from 'lucide-react'
 import { ProtectedRoute, useAuth } from './auth'
 import { useTheme } from './theme'
 import { LoginPage } from './pages/Login'
@@ -26,7 +26,9 @@ function AppShell() {
           </NavLink>
           <NavLink to="/add">Add</NavLink>
           <NavLink to="/find">Find</NavLink>
-          <NavLink to="/recommend">Recommend</NavLink>
+          <NavLink to="/recommend">
+            <Dices size={15} aria-hidden /> Recommend
+          </NavLink>
         </nav>
         <div className="topbar-actions">
           <span className="topbar-user">{user?.name}</span>

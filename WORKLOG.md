@@ -298,3 +298,66 @@ shipped, decisions made, anything the next agent needs to know.
   `CoverImage.test.tsx` (7), `AlbumCard.test.tsx` (4), `TagEditor.test.tsx` (4),
   `format.test.ts` (4 describe blocks) → **81 passed** (`npm test`), `npm run
   build` green. New total vs #4's 25 is 81 (added 56).
+
+## 2026-10-08 — Issue #6 recommendations UI — agent-recommend-6
+
+- Replaced the `/recommend` placeholder with the dusty/random picker wired to
+  `api.getRecommendations({mode, tag, n})`: **Dusty** (default) vs **Random**
+  segmented toggle with one-line explanations, single-select mood chips from
+  `getTags()` ("Any mood" + chips, `tag-chip`/`tag-filter` styles reused from
+  #5), a big "Spin" button → 3-card slate. Each card reuses **`CoverImage`**
+  (auth-gated blob → `cover_url` → placeholder), links through to `/album/:id`,
+  and shows the API's `reason` verbatim ("Haven't spun this since Aug 2026" /
+  "Never played" / "Random pick") + a `days_since_played` pill. Per-card
+  **"Spun it"** → `logPlay(id)` (card swaps to the returned `AlbumOut`,
+  `justSpun` state hides the stale badge, read-only accounts get a disabled
+  button); **"Show me another"** refetches `n=1` with the same mode/tag and
+  replaces only that slot. Loading: 3 skeleton cards (no layout jump when the
+  result grid lands); empty library → CTA to `/add`; tag-filtered empty →
+  "Clear tag"; error banner (backend down / 502) with Retry. Auto-spins once on
+  mount (StrictMode-safe `useRef` guard) so the states are visible immediately;
+  a request-sequence ref invalidates stale in-flight responses on mode/tag
+  changes.
+- **Decisions:** **n=3** kept (`SPIN_COUNT` const). Reroll semantics = refetch
+  same params with `n: 1`; avoids landing on a card already on screen (≤5
+  attempts, accepts whatever afterwards) so tiny shelves can't loop. After
+  "Spun it" the card locally substitutes the logged `AlbumOut` with
+  `reason: "Logged — happy spinning!"` — the backend's dusty reason would be
+  stale by definition. Mode/tag change clears the slate to an "idle" prompt
+  (explicit Spin applies the new selection — no auto-refetch spam). **Did not
+  reuse `AlbumCard`** (rec cards have reason/badge/actions and a different
+  layout) and did not extract a new shared component — flagging for #8 whether
+  the rec-card layout merits extraction once the polish pass sees it.
+- Nav: added lucide **`Dices`** to the top-bar Recommend link (other nav links
+  stay text-only — #8 may want uniform nav icons); `.topnav a` now
+  `inline-flex`. Added a small global `:focus-visible` outline block
+  (`.btn`/`.icon-btn`/`.tag-chip-btn`/`.mode-toggle button`).
+- No **`api.ts`/`types.ts`** changes: `getRecommendations` + `Recommendation`
+  already matched the live contract, so **no PLAN.md edits**.
+- Live check (port 8000 was already bound by an unrelated `python3` HTTP
+  process, so I ran the built `vynl-backend:latest` one-off on **18000** on the
+  `vynl_default` network, then removed it): register → flipped my smoke user to
+  admin+active in the dev DB → `GET /api/recommendations` empty-library `[]`;
+  imported MB "Remain in Light", tagged `chill`, verified populated dusty
+  (`Never played`, `days_since_played: null`), after `logPlay` dusty returns
+  `Haven't spun this since Oct 2026` / `days_since_played: 0`, random returns
+  `Random pick`, `tag=chill` filters, `tag=nope → []`, bogus `mode` → 422.
+  Smoke data left in dev `vynl` DB (`rec-check@example.com` + 1 album),
+  same habit as #5.
+- Tests: **11 new** in `RecommendPage.test.tsx` (auto-spin cards + reasons +
+  badges, link-through, Random mode query, tag-in-query, Spun-it → `logPlay` +
+  logged state, Show-me-another → `n: 1` swap, empty-library CTA `/add`,
+  tag-empty clear, loading skeleton + disabled Spin, error/Retry, read-only
+  disabled). `npm test` **92 passed** (was 81), `npm run build` green.
+- **Notes for #7 (integration/docs):** the recommendations endpoint is fully
+  live and matches `types.ts` — good smoke-test candidate for compose CI. `n`
+  is clamped 1–20 server-side; the UI always sends 3 and rerolls use `n: 1`.
+  Recommend screenshots: the rec grid with a dusty reason + badge, and the
+  empty-library CTA. Port-8000 conflict note: an unrelated process holds 8000 on
+  this host — compose will fail to bind until it's stopped.
+- **Notes for #8 (polish):** consider uniform nav icons across Shelf/Add/Find,
+  whether to keep the auto-spin-on-mount or add a filter-change debounce, the
+  `<`-`>` button pair on cards (hover states are fine; focus-visible added),
+  reroll duplicate-guard UX on sub-6-album shelves (≤5 attempts then accepts a
+  repeat — a "nothing else left" note could explain repeats), and auditing the
+  new `.rec-*` styles for the 640 px breakpoints/dark mode.
