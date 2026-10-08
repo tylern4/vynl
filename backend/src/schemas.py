@@ -1,8 +1,9 @@
 from datetime import datetime
+from typing import Annotated, Iterable, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from .models import Role, UserStatus
+from .models import Album, Role, Track, UserStatus
 
 
 class RegisterRequest(BaseModel):
@@ -54,3 +55,146 @@ class UserUpdate(BaseModel):
     status: UserStatus | None = None
     role: Role | None = None
     password: str | None = Field(default=None, min_length=8, max_length=128)
+
+
+# --- Collection API (PLAN §5, issue #3) -------------------------------------
+
+
+class SearchResultOut(BaseModel):
+    """One external search hit, normalized to the §5 SearchResult JSON.
+
+    The provider dataclass carries extra ids (``deezer_id`` /
+    ``musicbrainz_release_group_id``) used internally by import; those are
+    deliberately not part of the wire contract.
+    """
+
+    source: str  # "deezer" | "musicbrainz"
+    external_id: str
+    title: str
+    artist: str
+    year: int | None = None
+    track_count: int | None = None
+    cover_url: str | None = None
+    label: str | None = None
+
+
+class AlbumImportRequest(BaseModel):
+    source: Literal["deezer", "musicbrainz"]
+    external_id: str = Field(min_length=1, max_length=64)
+
+
+class TrackOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    position: int
+    title: str
+    duration_seconds: int | None = None
+
+
+class AlbumOut(BaseModel):
+    id: int
+    title: str
+    artist: str
+    year: int | None = None
+    label: str | None = None
+    country: str | None = None
+    source: str  # "deezer" | "musicbrainz"
+    external_id: str
+    cover_url: str | None = None
+    track_count: int
+    favorite: bool
+    note: str | None = None
+    last_played_at: datetime | None = None
+    tags: list[str] = Field(default_factory=list)
+    created_at: datetime
+    # Present (sorted by position) on detail responses; empty list on lists.
+    tracks: list[TrackOut] = Field(default_factory=list)
+
+
+def album_to_out(album: Album, *, tracks: Iterable[Track] | None = None) -> AlbumOut:
+    """Build the PLAN §5 AlbumOut for one album.
+
+    ``tracks=None`` leaves them empty (list views never touch the relationship
+    — no N+1); pass an iterable (e.g. ``album.tracks``) for the detail shape.
+    Tags are always included, sorted by name.
+    """
+    return AlbumOut(
+        id=album.id,
+        title=album.title,
+        artist=album.artist,
+        year=album.year,
+        label=album.label,
+        country=album.country,
+        source=album.source,
+        external_id=album.external_id,
+        cover_url=album.cover_url,
+        track_count=album.track_count,
+        favorite=album.favorite,
+        note=album.note,
+        last_played_at=album.last_played_at,
+        tags=sorted(tag.name for tag in album.tags),
+        created_at=album.created_at,
+        tracks=(
+            sorted(
+                (TrackOut.model_validate(track) for track in tracks),
+                key=lambda t: t.position,
+            )
+            if tracks is not None
+            else []
+        ),
+    )
+
+
+class AlbumUpdate(BaseModel):
+    favorite: bool | None = None
+    note: str | None = None
+    year: int | None = Field(default=None, ge=1800, le=2300)
+    label: str | None = Field(default=None, max_length=255)
+
+
+class TagCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+
+
+class TagOut(BaseModel):
+    id: int
+    name: str
+    album_count: int
+
+
+class AlbumTagsPut(BaseModel):
+    tags: list[Annotated[str, Field(min_length=1, max_length=60)]]
+
+
+class PlayCreate(BaseModel):
+    played_at: datetime | None = None
+
+
+class PlayOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    played_at: datetime
+
+
+class TrackSearchAlbum(BaseModel):
+    id: int
+    title: str
+    artist: str
+    year: int | None = None
+    cover_url: str | None = None
+
+
+class TrackSearchOut(BaseModel):
+    id: int
+    title: str
+    duration_seconds: int | None = None
+    position: int
+    album: TrackSearchAlbum
+
+
+class RecommendationOut(BaseModel):
+    album: AlbumOut
+    reason: str
+    days_since_played: int | None = None

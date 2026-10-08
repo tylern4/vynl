@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .migrations import run_migrations
-from .routers import auth, users
+from .routers import albums, auth, recommendations, search, tags, tracks, users
 
 
 @asynccontextmanager
@@ -30,6 +30,11 @@ app.add_middleware(
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
+app.include_router(search.router, prefix="/api")
+app.include_router(albums.router, prefix="/api")
+app.include_router(tags.router, prefix="/api")
+app.include_router(tracks.router, prefix="/api")
+app.include_router(recommendations.router, prefix="/api")
 
 
 @app.get("/api/health")

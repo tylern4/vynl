@@ -193,3 +193,61 @@ shipped, decisions made, anything the next agent needs to know.
 - **Notes for frontend/API:** merged search rows are `source="musicbrainz"`
   carrying `deezer_id`; MB-only rows have `cover_url=None`; Deezer-only rows
   have `year=None` — UI must render missing cover/year gracefully.
+
+## 2026-10-08 — Issue #3 collection API — agent-collection-3
+
+- Shipped the full PLAN §5 collection surface: `routers/search.py`
+  (`GET /api/search/albums`), `routers/albums.py` (import, list, detail,
+  patch, delete, cover serve, plays post/get/delete), `routers/tags.py`
+  (list/create, `PUT /api/albums/{id}/tags` replace, delete),
+  `routers/tracks.py` (`GET /api/tracks`), `routers/recommendations.py`
+  (dusty/random) — all mounted under `/api` in `main.py`. Routers import
+  providers only via `from .. import providers` so tests patch
+  `src.providers.{search_albums_detailed,import_album}` (no network).
+- Schemas added to `src/schemas.py`: `SearchResultOut`, `AlbumImportRequest`,
+  `TrackOut`, `AlbumOut` + module helper **`album_to_out(album, tracks=...)`**
+  (tags sorted; `tracks=None` → `[]`, list views never load the relation),
+  `AlbumUpdate`, `TagCreate/TagOut/AlbumTagsPut`, `PlayCreate/PlayOut`,
+  `TrackSearchAlbum/TrackSearchOut`, `RecommendationOut` — field-for-field
+  with §5 and frontend `types.ts` (verified both directions; no PLAN edits).
+- Artwork lives in **`src/services/artwork.py`** (issue said services/ if it
+  got heavy): streaming httpx download with 15 MB cap + magic-byte sniffing →
+  `covers_dir/{album_id}.{ext}`, path-traversal-safe `resolve_cover_file`
+  (bare filename, resolved inside the root), media-type map. Artwork can
+  never fail an import — the module returns `None` on any error *and* the
+  router guards the call defensively; failure leaves `cover_path` null (UI
+  hotlinks `cover_url`).
+- Semantics decisions: foreign album/tag/play → **404 (not 403)**, writes via
+  #1's `require_write` → 403 `"Read-only account cannot make changes"`; import
+  hard dedupe `(user_id, source, external_id)` + soft dedupe
+  `lower(trim(title))|lower(trim(artist))` → 409 with
+  `Album already in your shelf (id=N)`; `NotFound`→404 / `ProviderError`→502
+  (catch NotFound first — it's a subclass); naive `played_at` = UTC, future >
+  5 min → 422; `last_played_at` = max(played_at), recomputed (or nulled) on
+  play delete (explicit `flush()` first — autoflush is off); POST tags → 201
+  new / 200 existing (idempotent), everything normalized lower+trim.
+- Dusty picker: candidates ordered `last_played_at ASC NULLS FIRST, id ASC`,
+  pool = first `max(ceil(N*0.25), n)`, drops plays <3 days old when enough
+  alternatives, jitter-ranks by `i + rng.random()*max(1, len(pool)*0.25)`
+  (pool-bounded ⇒ no dupes), `n` clamped 1–20. RNG is a **FastAPI dependency
+  (`get_rng`)** — tests override `app.dependency_overrides[get_rng]` with
+  `random.Random(seed)` for determinism.
+- `X-Search-Degraded` **is implemented** (was flagged unimplementable in the
+  issue; #2 later added `search_albums_detailed → SearchOutcome` for exactly
+  this). Header value is the failing provider *name* (`X-Search-Degraded:
+  deezer`, comma-joined defensively), body stays a plain array; both-providers
+  down still → 502.
+- Contract notes for #5/#6 frontend: list `limit` default **100** (max 500) +
+  `offset` — paginate explicitly for large shelves; list responses always
+  carry `tracks: []` (present-but-empty, matches optional `tracks?`); success
+  codes are 201 (import/play/tag-create), 200, 204 (deletes), 409 detail
+  embeds the existing album id.
+- Tests: `test_search.py` (external search incl. degraded header + **library
+  track search**), `test_albums.py` (import/CRUD/cover incl. httpx.MockTransport
+  artwork units + path traversal), `test_tags.py`, `test_plays.py`,
+  `test_recommendations.py` (seeded-RNG invariants) → **172 passed, 0 failed**
+  against compose Postgres. Notes: parallel pytest runs share `vynl_test` and
+  `DROP … WITH (FORCE)` races were frequent mid-run — resolved by waiting for
+  the other suite to finish and re-running (no conftest/DB-name changes).
+  `pytest.ini` already sets `-q`, so don't add another `-q` (it suppresses the
+  summary line via `-qq`).
