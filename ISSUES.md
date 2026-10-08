@@ -1,0 +1,23 @@
+# vynl — Issue Tracker
+
+Index of all implementation issues. One file per issue under
+[`docs/issues/`](docs/issues/). This is the coordination surface for parallel work:
+claim an issue by flipping it to `in progress` before starting, check off acceptance
+criteria as you go, finish by marking it `done` and appending to
+[WORKLOG.md](WORKLOG.md).
+
+**Protocol:** see [docs/PLAN.md §11](docs/PLAN.md). Agents do not run git commands;
+the coordinator commits.
+
+| # | Title | Status | Depends on | Wave | Assignee |
+| --- | --- | --- | --- | --- | --- |
+| 1 | [Backend foundation](docs/issues/001-backend-foundation.md) | open | — | 1 | — |
+| 2 | [Music providers (MusicBrainz + Deezer + CAA)](docs/issues/002-music-providers.md) | open | — | 2 | — |
+| 3 | [Collection API (import, albums, tags, plays, search, recs)](docs/issues/003-collection-api.md) | open | 1, 2 | 2 | — |
+| 4 | [Frontend foundation (scaffold, auth, theme)](docs/issues/004-frontend-foundation.md) | open | — | 1 | — |
+| 5 | [Shelf & detail UI](docs/issues/005-shelf-detail-ui.md) | open | 3, 4 | 3 | — |
+| 6 | [Recommendations UI](docs/issues/006-recommendations-ui.md) | open | 5 | 4 | — |
+| 7 | [Integration: compose, CI, README, smoke test](docs/issues/007-integration.md) | open | 3, 5, 6 | 5 | — |
+| 8 | [Polish: responsive, empty/error states, dark mode](docs/issues/008-polish.md) | open | 5 | 4–5 | — |
+
+Statuses: `open` → `in progress` → `done` (or `blocked` with a note).
