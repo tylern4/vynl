@@ -20,5 +20,6 @@ the coordinator commits.
 | 7 | [Integration: compose, CI, README, smoke test](docs/issues/007-integration.md) | done | 3, 5, 6 | 5 | agent-integration-7 |
 | 8 | [Polish: responsive, empty/error states, dark mode](docs/issues/008-polish.md) | done | 5 | 4–5 | agent-polish-8 |
 | 9 | [Admin approval gap — pending accounts have no UI path](docs/issues/009-admin-approval-gap.md) | open | — | follow-up | — |
+| 10 | [Color palette themes + settings menu](docs/issues/010-palette-themes.md) | in progress | 8 | feature | agent-palette-10 |
 
 Statuses: `open` → `in progress` → `done` (or `blocked` with a note).
