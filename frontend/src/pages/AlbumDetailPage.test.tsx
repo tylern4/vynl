@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { Album, Tag } from '../types'
@@ -16,9 +16,11 @@ const mocks = vi.hoisted(() => {
     logPlay: vi.fn(),
     deletePlay: vi.fn(),
     deleteAlbum: vi.fn(),
+    uploadAlbumCover: vi.fn(),
     getCoverUrl: vi.fn((id: number) => `/api/albums/${id}/cover`),
     getCoverBlob: vi.fn().mockResolvedValue(null),
   }
+  const normalizeCoverFile = vi.fn()
   const useAuth = vi.fn()
   class ApiError extends Error {
     status: number
@@ -27,10 +29,13 @@ const mocks = vi.hoisted(() => {
       this.status = status
     }
   }
-  return { api, useAuth, ApiError }
+  return { api, normalizeCoverFile, useAuth, ApiError }
 })
 
 vi.mock('../api', () => ({ api: mocks.api, ApiError: mocks.ApiError }))
+vi.mock('../components/coverNormalize', () => ({
+  normalizeCoverFile: mocks.normalizeCoverFile,
+}))
 vi.mock('../auth', () => ({ useAuth: () => mocks.useAuth() }))
 
 const album: Album = {
@@ -72,14 +77,26 @@ function renderDetail(albumId = 7) {
   )
 }
 
+/** Attach a file to a file input the way jsdom requires. */
+function uploadFile(input: HTMLElement, file: File) {
+  Object.defineProperty(input, 'files', { value: [file], configurable: true })
+  fireEvent.change(input)
+}
+
 beforeEach(() => {
   mocks.useAuth.mockReset()
   Object.values(mocks.api).forEach((fn) => fn.mockClear())
+  mocks.normalizeCoverFile.mockReset()
+  mocks.normalizeCoverFile.mockResolvedValue(
+    new Blob(['jpeg'], { type: 'image/jpeg' }),
+  )
   mocks.api.getCoverBlob.mockResolvedValue(null)
   mocks.api.getAlbum.mockResolvedValue(album)
   mocks.api.listPlays.mockResolvedValue([])
   mocks.api.getTags.mockResolvedValue(allTags)
   mocks.useAuth.mockReturnValue(defaultAuth())
+  URL.createObjectURL = vi.fn(() => 'blob:mock-cover') as typeof URL.createObjectURL
+  URL.revokeObjectURL = vi.fn()
 })
 
 describe('AlbumDetailPage', () => {
@@ -226,5 +243,59 @@ describe('AlbumDetailPage', () => {
     await user.click(screen.getByRole('button', { name: 'Remove from shelf' }))
     await user.click(screen.getByRole('button', { name: 'Keep it' }))
     expect(mocks.api.deleteAlbum).not.toHaveBeenCalled()
+  })
+
+  it('replaces the cover via the picker and confirms', async () => {
+    const user = userEvent.setup()
+    mocks.api.uploadAlbumCover.mockResolvedValue({ ...album, cover_url: null })
+    renderDetail()
+    await screen.findByRole('heading', { name: 'Remain in Light' })
+
+    await user.click(screen.getByRole('button', { name: 'Replace cover' }))
+    expect(screen.getByRole('button', { name: 'Upload image' })).toBeInTheDocument()
+
+    uploadFile(
+      screen.getByLabelText('Upload cover image'),
+      new File(['jpeg-bytes'], 'cover.jpg', { type: 'image/jpeg' }),
+    )
+    expect(await screen.findByAltText('Cover preview')).toBeInTheDocument()
+    expect(mocks.normalizeCoverFile).toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByRole('button', { name: 'Save cover' }))
+    await waitFor(() =>
+      expect(mocks.api.uploadAlbumCover).toHaveBeenCalledWith(
+        7,
+        expect.any(Blob),
+      ),
+    )
+    expect(await screen.findByText('Cover updated.')).toBeInTheDocument()
+    // The picker closes after a successful save.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Upload image' }),
+      ).not.toBeInTheDocument(),
+    )
+  })
+
+  it('keeps the picker open and surfaces a failed cover upload', async () => {
+    const user = userEvent.setup()
+    mocks.api.uploadAlbumCover.mockRejectedValue(
+      new mocks.ApiError(400, 'Not a valid image'),
+    )
+    renderDetail()
+    await screen.findByRole('heading', { name: 'Remain in Light' })
+
+    await user.click(screen.getByRole('button', { name: 'Replace cover' }))
+    uploadFile(
+      screen.getByLabelText('Upload cover image'),
+      new File(['jpeg-bytes'], 'cover.jpg', { type: 'image/jpeg' }),
+    )
+    await screen.findByAltText('Cover preview')
+
+    await user.click(screen.getByRole('button', { name: 'Save cover' }))
+    expect(await screen.findByText('Not a valid image')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Upload image' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save cover' })).toBeInTheDocument()
+    expect(mocks.api.uploadAlbumCover).toHaveBeenCalledTimes(1)
   })
 })

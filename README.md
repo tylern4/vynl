@@ -34,6 +34,10 @@ frontend, everything behind one `docker compose up`.
 - **Tags** — label records with moods, vibes, genres, or anything else, and
   filter the shelf by tag.
 - **Library search** — find albums or individual songs across your collection.
+- **Manual album entry** — can't find a pressing anywhere? Enter title, artist,
+  year, and an optional tracklist by hand, then snap a cover with your phone camera
+  or upload a file (normalized to a JPEG automatically); covers can also be replaced
+  later from the album page.
 - **Recommendations** — a "dusty" picker that surfaces records you haven't spun
   in a while (with a reason and "X days since spun"), plus a pure random spin.
 - **Color palettes + settings** — eight curated palettes (city pop, cyberpunk,

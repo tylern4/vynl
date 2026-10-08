@@ -21,7 +21,7 @@ the coordinator commits.
 | 8 | [Polish: responsive, empty/error states, dark mode](docs/issues/008-polish.md) | done | 5 | 4–5 | agent-polish-8 |
 | 9 | [Admin approval gap — pending accounts have no UI path](docs/issues/009-admin-approval-gap.md) | open | — | follow-up | — |
 | 10 | [Color palette themes + settings menu](docs/issues/010-palette-themes.md) | done | 8 | feature | agent-palette-10 |
-| 11 | [Manual album entry + cover upload / camera](docs/issues/011-manual-album-entry.md) | in progress | 3, 5 (after 10) | feature | agent-manual-11 |
+| 11 | [Manual album entry + cover upload / camera](docs/issues/011-manual-album-entry.md) | done | 3, 5 (after 10) | feature | agent-manual-11 |
 | 12 | [More music providers — iTunes (multi-country) + Discogs](docs/issues/012-more-music-providers.md) | open | 2, 3 (after 10, 11) | feature | — |
 | 13 | [Import preview — click a search result to see what will be imported](docs/issues/013-import-preview.md) | done | 3, 5 (after 10, before 12) | feature | agent-preview-13 |
 

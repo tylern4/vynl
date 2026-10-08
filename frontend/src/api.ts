@@ -5,6 +5,7 @@ import type {
   AlbumPreview,
   AlbumUpdate,
   LoginResult,
+  ManualAlbumInput,
   Play,
   Recommendation,
   RecommendationParams,
@@ -96,6 +97,54 @@ export const api = {
   // ---- Collection ----
   importAlbum: (data: AlbumImport) =>
     request<Album>('/albums/import', { method: 'POST', body: JSON.stringify(data) }),
+  /** Manually create an album with a user-entered tracklist (issue #11). */
+  createManualAlbum: (input: ManualAlbumInput) =>
+    request<Album>('/albums/manual', { method: 'POST', body: JSON.stringify(input) }),
+  /**
+   * Upload a cover image (JPEG-normalized by the CoverPicker) via a multipart
+   * `PUT /albums/{id}/cover` (FormData `file` field) with a Bearer token.
+   * The declared content type is only a hint — the backend sniffs the bytes.
+   * Surfaces the API's 400 detail.
+   */
+  uploadAlbumCover: async (id: number, blob: Blob): Promise<Album> => {
+    // Multipart PUT /albums/{id}/cover (#11): FormData so the browser sets
+    // the multipart boundary; the backend sniffs the bytes regardless.
+    const form = new FormData()
+    form.append('file', blob, 'cover.jpg')
+    const headers: Record<string, string> = {}
+    const token = getToken()
+    if (token) headers.Authorization = `Bearer ${token}`
+    let res: Response
+    try {
+      res = await fetch(`/api/albums/${id}/cover`, {
+        method: 'PUT',
+        headers,
+        body: form,
+      })
+    } catch {
+      throw new ApiError(0, 'Network error')
+    }
+    if (res.status === 401) {
+      clearToken()
+      window.location.assign('/login')
+      throw new ApiError(401, 'Not authenticated')
+    }
+    const text = await res.text()
+    let body: unknown = null
+    try {
+      body = text ? JSON.parse(text) : null
+    } catch {
+      body = null
+    }
+    if (!res.ok) {
+      const detail =
+        typeof (body as { detail?: unknown })?.detail === 'string'
+          ? ((body as { detail: string }).detail)
+          : res.statusText
+      throw new ApiError(res.status, detail)
+    }
+    return body as Album
+  },
   /** Dry-run preview of import (issue #13): what the album would look like. */
   previewAlbum: (data: AlbumImport) =>
     request<AlbumPreview>('/albums/preview', {

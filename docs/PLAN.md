@@ -126,7 +126,7 @@ mirroring the reference project's conventions.
 | year | int nullable | release year |
 | label | varchar(255) nullable | record label |
 | country | varchar(8) nullable | ISO country from source |
-| source | varchar(20) | `deezer` \| `musicbrainz` |
+| source | varchar(20) | `deezer` \| `musicbrainz` \| `manual` (issue #11) |
 | external_id | varchar(64) | source id: Deezer album id or MBID |
 | musicbrainz_release_group_id | varchar(36) nullable idx | set when known |
 | deezer_id | bigint nullable | set when known |
@@ -232,12 +232,44 @@ being down: returns the other's results with a `degraded` flag in headers
 | Method & path | Body | Response |
 | --- | --- | --- |
 | `POST /api/albums/import` | `{source, external_id}` | `AlbumOut` (201; **409** if already in the user's shelf) |
+| `POST /api/albums/manual` | `ManualAlbumInput` | `AlbumOut` (201; **409** on soft-dupe, **422** on invalid fields; issue #11) |
 | `POST /api/albums/preview` | `{source, external_id}` | `AlbumPreviewOut` — a **dry-run** of import: same assembly code path (incl. twin discovery), but **no album row is created and no 409 is raised** (works for albums already on the shelf); `NotFound` → 404, other provider errors → 502, exactly like import (issue #13) |
 | `GET /api/albums` | `q`, `tag`, `favorite`, `sort` (`added`\|`title`\|`artist`\|`year`\|`played`), `limit`, `offset` | `AlbumOut[]` (without tracks) |
 | `GET /api/albums/{id}` | — | `AlbumOut` **with `tracks[]`** |
 | `PATCH /api/albums/{id}` | `{favorite?, note?, year?, label?}` | `AlbumOut` |
 | `DELETE /api/albums/{id}` | — | `204` |
 | `GET /api/albums/{id}/cover` | — | image bytes (`image/jpeg`/`png`/`webp`), `Cache-Control: public, max-age=86400`; `404` if never fetched, frontend falls back to `cover_url` |
+| `PUT /api/albums/{id}/cover` | **raw image bytes** (issue #11) | `AlbumOut` — sets `cover_path`; 400 on empty/oversized/non-image payload; `cover_url` left as-is |
+
+```jsonc
+// ManualAlbumInput — POST /api/albums/manual (issue #11; no provider involved)
+{
+  "title": "Midnight Crush",          // required (trimmed, 1..500)
+  "artist": "Tokyo Heartbeat",        // required (trimmed, 1..500)
+  "year": 1983, "label": "...", "country": "JP",   // optional
+  "favorite": false, "note": "...",                 // optional
+  "tracks": [                        // optional; positions auto-assigned 1..n
+    {"title": "Track One", "duration_seconds": 214} // title required, duration optional (>= 0)
+  ]
+}
+```
+
+The manual album persists `source="manual"` with `external_id` = a fresh
+`uuid4().hex` (satisfies the `(user_id, source, external_id)` unique constraint),
+`cover_url`/`cover_path` null until the user uploads art, and `metadata_={}`.
+Creation soft-dedupes exactly like import —
+`(user_id, lower(trim(title)), lower(trim(artist)))` already present → **409**
+`"Album already in your shelf (id=N)"`. Validation is 422: blank/whitespace
+title/artist, blank track title, negative `duration_seconds`, year outside
+1000…now+1.
+
+**Cover upload is a raw-bytes PUT** — a deliberate deviation from the issue's
+multipart wording: the `Content-Type` header is ignored and the payload is sniffed
+by magic bytes (`services.artwork.sniff_image`), so `python-multipart` is never
+needed. The frontend normalizes the pick to a ≤ ~2000 px JPEG (HEIC-safe) before
+uploading; the backend replaces any previously stored `{album_id}.*` file (extension
+may differ) and returns 400 — never 500 — for empty / > 15 MB / non-image bytes. Works
+for any owned album (manual or imported).
 
 ```jsonc
 // AlbumOut (list variant: tracks omitted or empty)
@@ -439,7 +471,8 @@ Routes (react-router, `ProtectedRoute` wrapper same as reference):
 | `/login`, `/register` | auth pages | invite-code registration, identical flow to reference |
 | `/` | `ShelfPage` | responsive cover grid ("the shelf"); instant filter box; tag chips sidebar/dropdown; sort selector; favorite toggle |
 | `/album/:id` | `AlbumDetailPage` | large cover, metadata, **tracklist table** (position, title, length m:ss), tag editor (add/remove chips), "I spun this" play button + play history, edit note/favorite, remove from shelf |
-| `/add` | `AddAlbumPage` | search box → merged results from `/api/search/albums` → one-click import with progress state; shows which source; already-added state; **clicking a result title opens the import-preview modal** (`POST /api/albums/preview`) showing the cover, full tracklist (with a per-source tracklist toggle when both providers have one), and which provider fed each part before you commit (issue #13) |
+| `/add` | `AddAlbumPage` | search box → merged results from `/api/search/albums` → one-click import with progress state; shows which source; already-added state; **clicking a result title opens the import-preview modal** (`POST /api/albums/preview`) showing the cover, full tracklist (with a per-source tracklist toggle when both providers have one), and which provider fed each part before you commit (issue #13); a "Can't find it? Enter the album manually" secondary path links to `/add/manual` |
+| `/add/manual` | `ManualAlbumPage` | manual entry form (title*/artist*/year/label/country/note) with a **dynamic tracklist editor** (per-row title + duration, entered as `m:ss` or plain seconds, add/remove rows); submit → `POST /albums/manual` → upload the picked cover → navigate to `/album/{id}`; a failed cover upload keeps the created album and offers inline retry (issue #11) |
 | `/find` | `FindPage` | library-wide song/album/tag search across `/api/tracks` + `/api/albums`; results show song → its album; click through to detail |
 | `/recommend` | `RecommendPage` | mode toggle (`dusty` / `random`), optional tag filter, big "Spin" button → recommendation card with reason + "Spun it" action |
 
@@ -449,6 +482,16 @@ redirect to `/login`. `types.ts` mirrors the §5 JSON shapes. Styling:
 `styles.css` with CSS variables, light/dark via `theme.tsx` toggle (persisted,
 system default first visit), lucide-react icons, **no CSS framework**. Album cards
 show `GET /api/albums/{id}/cover` with `cover_url` fallback and `loading="lazy"`.
+
+**Cover art picker (issue #11):** `CoverPicker` is a reusable chooser with "Upload
+image" (`<input type="file" accept="image/*">`) and "Take photo"
+(`accept="image/*" capture="environment"` to open the phone camera). Before upload
+the file is **normalized to a ≤ ~2000 px JPEG** via `createImageBitmap`/`<img>` +
+canvas + `.toBlob('image/jpeg', 0.9)` (handles iOS HEIC and huge originals), previewed
+as a blob URL, and removable. It's mounted on the `ManualAlbumPage` (upload after
+creation) and on `AlbumDetailPage` ("Replace cover" — works for manual *and* imported
+albums, uploads to the same `PUT /api/albums/{id}/cover` endpoint and updates in
+place). Manual albums render a `source="manual"` `SourceBadge`.
 
 Theming is two independent axes (`theme.tsx`): `data-theme="light|dark"` (persisted
 under `vynl_theme`, system preference on first visit) plus a `data-palette` axis

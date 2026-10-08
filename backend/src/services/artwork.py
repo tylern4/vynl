@@ -54,6 +54,43 @@ def media_type_for_name(filename: str) -> str:
     return guessed or "application/octet-stream"
 
 
+def store_cover_bytes(
+    data: bytes,
+    album_id: int,
+    *,
+    covers_dir: str | Path | None = None,
+    max_bytes: int | None = MAX_COVER_BYTES,
+) -> str | None:
+    """Store raw cover bytes as ``{album_id}.{ext}`` inside the covers dir.
+
+    Sniffs the bytes (uploads never trust the client's ``Content-Type``),
+    deletes any previously stored cover file for this album first — its
+    extension may differ, e.g. old ``12.jpg`` vs new ``12.png`` — writes the
+    new file, and returns the stored relative filename (``"12.png"``).
+
+    Returns ``None`` on **any** failure (non-image bytes, over ``max_bytes``,
+    I/O error) so the router can map it to a friendly 400 and artwork never
+    raises into a 500 — same ethos as ``download_cover``.
+    """
+    if max_bytes is not None and len(data) > max_bytes:
+        return None
+    sniffed = sniff_image(data)
+    if sniffed is None:
+        return None
+    ext, _media_type = sniffed
+    try:
+        root = _covers_root(covers_dir)
+        root.mkdir(parents=True, exist_ok=True)
+        for old in root.glob(f"{album_id}.*"):
+            if old.is_file():
+                old.unlink()
+        target = root / f"{album_id}.{ext}"
+        target.write_bytes(data)
+        return target.name
+    except OSError:
+        return None
+
+
 def _covers_root(covers_dir: str | Path | None = None) -> Path:
     if covers_dir is not None:
         return Path(covers_dir)

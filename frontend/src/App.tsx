@@ -8,6 +8,7 @@ import { SettingsPage } from './pages/SettingsPage'
 import { ShelfPage } from './pages/ShelfPage'
 import { AlbumDetailPage } from './pages/AlbumDetailPage'
 import { AddAlbumPage } from './pages/AddAlbumPage'
+import { ManualAlbumPage } from './pages/ManualAlbumPage'
 import { FindPage } from './pages/FindPage'
 import { RecommendPage } from './pages/RecommendPage'
 
@@ -70,6 +71,7 @@ export default function App() {
         <Route path="/" element={<ShelfPage />} />
         <Route path="/album/:id" element={<AlbumDetailPage />} />
         <Route path="/add" element={<AddAlbumPage />} />
+        <Route path="/add/manual" element={<ManualAlbumPage />} />
         <Route path="/find" element={<FindPage />} />
         <Route path="/recommend" element={<RecommendPage />} />
         <Route path="/settings" element={<SettingsPage />} />

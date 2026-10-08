@@ -137,6 +137,73 @@ describe('getCoverUrl', () => {
   })
 })
 
+describe('createManualAlbum', () => {
+  it('posts the manual payload to /albums/manual', async () => {
+    mockFetch(201, { id: 9 })
+    await api.createManualAlbum({
+      title: 'Demo Tape',
+      artist: 'Local Band',
+      year: 2021,
+      tracks: [{ title: 'Song A', duration_seconds: 225 }],
+    })
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/albums/manual',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'Demo Tape',
+          artist: 'Local Band',
+          year: 2021,
+          tracks: [{ title: 'Song A', duration_seconds: 225 }],
+        }),
+      }),
+    )
+  })
+})
+
+describe('uploadAlbumCover', () => {
+  it('multipart-PUTs the file with a bearer token and returns the album', async () => {
+    setToken('tok123')
+    mockFetch(200, { id: 7 })
+    const blob = new Blob(['jpeg'], { type: 'image/jpeg' })
+
+    await expect(api.uploadAlbumCover(7, blob)).resolves.toEqual({ id: 7 })
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/albums/7/cover',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: expect.objectContaining({ Authorization: 'Bearer tok123' }),
+        body: expect.any(FormData),
+      }),
+    )
+    const [, init] = vi.mocked(fetch).mock.calls[0] as [
+      string,
+      RequestInit | undefined,
+    ]
+    const form = init?.body as FormData
+    const file = form.get('file') as File
+    expect(file).toBeInstanceOf(Blob) // the `file` field carries the cover
+    expect(file.size).toBe(blob.size) // (append() wraps the blob as a File)
+  })
+
+  it('surfaces the API 400 detail for an invalid image', async () => {
+    mockFetch(400, { detail: 'Not a valid image' })
+    await expect(
+      api.uploadAlbumCover(7, new Blob(['x'])),
+    ).rejects.toThrow('Not a valid image')
+  })
+
+  it('throws an ApiError with status 0 on network failure', async () => {
+    vi.mocked(fetch).mockRejectedValue(new TypeError('NetworkError'))
+    const error = await api
+      .uploadAlbumCover(7, new Blob(['x']))
+      .then(() => null)
+      .catch((e) => e)
+    expect(error).toBeInstanceOf(ApiError)
+    expect((error as ApiError).status).toBe(0)
+  })
+})
+
 describe('getCoverBlob', () => {
   it('fetches the cached cover with the bearer token and returns a blob', async () => {
     setToken('tok123')

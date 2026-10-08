@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated, Iterable, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from .models import Album, Role, Track, UserStatus
 
@@ -81,6 +81,59 @@ class SearchResultOut(BaseModel):
 class AlbumImportRequest(BaseModel):
     source: Literal["deezer", "musicbrainz"]
     external_id: str = Field(min_length=1, max_length=64)
+
+
+class ManualTrackInput(BaseModel):
+    """One track row from ``POST /albums/manual`` (issue #11).
+
+    Positions are auto-assigned 1..n server-side; ``duration_seconds`` is
+    optional (null when omitted).
+    """
+
+    title: str = Field(min_length=1, max_length=500)
+    duration_seconds: int | None = Field(default=None, ge=0)
+
+    @field_validator("title")
+    @classmethod
+    def _title_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Track title cannot be blank")
+        return value
+
+
+class ManualAlbumInput(BaseModel):
+    """Body of ``POST /api/albums/manual`` — a manually entered album.
+
+    Title/artist are required (trimmed, 1..500); everything else optional.
+    No provider is involved, so ``external_id`` is a client-free UUID and no
+    artwork is fetched at creation time.
+    """
+
+    title: str = Field(min_length=1, max_length=500)
+    artist: str = Field(min_length=1, max_length=500)
+    year: int | None = None
+    label: str | None = Field(default=None, max_length=255)
+    country: str | None = Field(default=None, max_length=8)
+    favorite: bool = False
+    note: str | None = None
+    tracks: list[ManualTrackInput] = Field(default_factory=list)
+
+    @field_validator("title", "artist")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Title and artist cannot be blank")
+        return value
+
+    @field_validator("year")
+    @classmethod
+    def _year_sane(cls, value: int | None) -> int | None:
+        if value is None:
+            return value
+        upper = datetime.now(timezone.utc).year + 1
+        if not (1000 <= value <= upper):
+            raise ValueError(f"Year must be between 1000 and {upper}")
+        return value
 
 
 class TrackPreviewOut(BaseModel):

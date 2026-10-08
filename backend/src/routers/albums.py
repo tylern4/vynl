@@ -7,8 +7,18 @@ through #1's ``require_write`` so read-only accounts can't mutate the shelf.
 
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
+from uuid import uuid4
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    status,
+    UploadFile,
+)
 from fastapi.responses import FileResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -24,6 +34,7 @@ from ..schemas import (
     AlbumPreviewOut,
     AlbumSourceBreakdown,
     AlbumUpdate,
+    ManualAlbumInput,
     PlayCreate,
     PlayOut,
     TrackPreviewOut,
@@ -35,6 +46,27 @@ router = APIRouter(prefix="/albums", tags=["albums"])
 
 COVER_CACHE_CONTROL = "public, max-age=86400"
 FUTURE_SKEW = timedelta(minutes=5)
+MANUAL_SOURCE = "manual"
+
+
+async def read_cover_bytes(file: UploadFile) -> bytes | None:
+    """Read an uploaded cover with a bounded read.
+
+    Streams 64 kB chunks and stops early once ``MAX_COVER_BYTES`` is exceeded,
+    so a hostile huge upload is never buffered in full. Returns ``None`` to
+    signal "oversized" (the partial payload is dropped, never stored).
+    """
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(64 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > artwork.MAX_COVER_BYTES:
+            return None
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def get_owned_album(db: Session, album_id: int, user: User) -> Album:
@@ -228,6 +260,69 @@ def import_album(
     return album_to_out(album, tracks=album.tracks)
 
 
+@router.post("/manual", response_model=AlbumOut, status_code=status.HTTP_201_CREATED)
+def create_manual_album(
+    payload: ManualAlbumInput,
+    current_user: Annotated[User, Depends(require_write)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Manually create an album (issue #11): title/artist/… plus an optional
+    tracklist, with no provider involved. Nothing is fetched at creation —
+    ``cover_url``/``cover_path`` stay null until the user uploads artwork.
+
+    ``source="manual"`` + a fresh ``uuid4().hex`` satisfies the
+    ``(user_id, source, external_id)`` unique constraint. Soft-dedupes exactly
+    like import: ``(user_id, lower(trim(title)), lower(trim(artist)))`` → 409.
+    """
+    title = payload.title.strip()
+    artist = payload.artist.strip()
+    existing = db.scalar(
+        select(Album).where(
+            Album.user_id == current_user.id,
+            func.lower(func.trim(Album.title)) == title.lower(),
+            func.lower(func.trim(Album.artist)) == artist.lower(),
+        )
+    )
+    if existing is not None:
+        raise _conflict(existing)
+
+    album = Album(
+        user_id=current_user.id,
+        title=title,
+        artist=artist,
+        year=payload.year,
+        label=payload.label,
+        country=payload.country,
+        source=MANUAL_SOURCE,
+        external_id=uuid4().hex,
+        cover_url=None,
+        metadata_={},
+        track_count=len(payload.tracks),
+        favorite=payload.favorite,
+        note=payload.note,
+    )
+    db.add(album)
+    try:
+        db.flush()  # assign album.id before tracks
+        for position, track in enumerate(payload.tracks, start=1):
+            db.add(
+                Track(
+                    album_id=album.id,
+                    position=position,
+                    title=track.title.strip(),
+                    duration_seconds=track.duration_seconds,
+                )
+            )
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        # A fresh uuid + the per-user soft-dedupe above make a genuine conflict
+        # effectively impossible; surface anything unexpected as-is.
+        raise
+    db.refresh(album)
+    return album_to_out(album, tracks=album.tracks)
+
+
 @router.get("", response_model=list[AlbumOut])
 def list_albums(
     current_user: Annotated[User, Depends(get_current_user)],
@@ -356,6 +451,55 @@ def get_cover(
         media_type=artwork.media_type_for_name(path.name),
         headers={"Cache-Control": COVER_CACHE_CONTROL},
     )
+
+
+@router.put("/{album_id}/cover", response_model=AlbumOut)
+async def upload_cover(
+    album_id: int,
+    current_user: Annotated[User, Depends(require_write)],
+    db: Annotated[Session, Depends(get_db)],
+    file: Annotated[UploadFile, File()],
+):
+    """Store a user-provided cover image (file upload or phone camera, #11).
+
+    Multipart ``file`` field (``python-multipart``); the declared content type
+    is treated as a hint only — the payload is validated by magic bytes, so a
+    camera-captured JPEG shot through any client works. Works for any album the
+    user owns (manual or imported); ``cover_url`` is left untouched (imported
+    albums keep their remote URL as a fallback).
+
+    Payload problems are always a friendly 400, never a 500: empty body,
+    > ``MAX_COVER_BYTES``, or non-image bytes. Returns the updated AlbumOut.
+    """
+    data = await read_cover_bytes(file)
+    if data is None:  # bounded read bailed: payload exceeded MAX_COVER_BYTES
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Image file is too large "
+                f"(max {artwork.MAX_COVER_BYTES // (1024 * 1024)} MB)"
+            ),
+        )
+    album = get_owned_album(db, album_id, current_user)
+    if not data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="No image data provided"
+        )
+    if artwork.sniff_image(data) is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Not a supported image (JPEG, PNG, GIF, or WebP)",
+        )
+    filename = artwork.store_cover_bytes(data, album.id)
+    if filename is None:  # I/O failure under the (validated) covers dir
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not store the image",
+        )
+    album.cover_path = filename
+    db.commit()
+    db.refresh(album)
+    return album_to_out(album, tracks=album.tracks)
 
 
 # --- Play listening history (PLAN §5) ---------------------------------------

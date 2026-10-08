@@ -117,6 +117,12 @@ describe('AddAlbumPage', () => {
     expect(screen.getByRole('heading', { name: 'Find your next record' })).toBeInTheDocument()
   })
 
+  it('links to the manual entry page for hand-typed albums', () => {
+    renderAdd()
+    const link = screen.getByRole('link', { name: /Enter the album manually/ })
+    expect(link).toHaveAttribute('href', '/add/manual')
+  })
+
   it('imports on click and links to the new album', async () => {
     const user = userEvent.setup()
     mocks.api.searchAlbums.mockResolvedValue([deezerResult])

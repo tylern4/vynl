@@ -245,6 +245,10 @@ export function AddAlbumPage() {
       {previewRow && (
         <AlbumPreviewModal row={previewRow} onClose={() => setPreviewRow(null)} />
       )}
+
+      <div className="manual-entry-note">
+        <Link to="/add/manual">Can’t find it? Enter the album manually</Link>
+      </div>
     </div>
   )
 }

@@ -626,3 +626,90 @@ shipped, decisions made, anything the next agent needs to know.
   `AlbumImportRequest` needs extending when itunes/discogs land. Docker frontend on
   :8081 still serves a stale pre-#8 build; frontend checks used `npm run dev` on
   5173 (stopped after verification).
+
+## 2026-10-08 — Issue #11 manual album entry — agent-manual-11
+
+- Shipped **manual album entry + cover upload** (issue #11): backend
+  `POST /api/albums/manual` + `PUT /api/albums/{id}/cover`, frontend
+  `ManualAlbumPage` (`/add/manual`) + reusable `CoverPicker`, detail-page
+  "Replace cover", `SourceBadge` manual variant, tests, docs.
+- **Backend.** `schemas.py`: `ManualTrackInput {title 1..500 not-blank,
+  duration_seconds? ge=0}` and `ManualAlbumInput {title*, artist*, year?, label?,
+  country?, favorite?, note?, tracks?}` with validators (blank/whitespace title or
+  artist → 422, year 1000…now+1). `routers/albums.py`: `create_manual_album`
+  (`require_write`, 201 → AlbumOut with tracks; persists `source="manual"`,
+  `external_id=uuid4().hex`, `cover_url=None`, `metadata_={}`, `track_count`
+  denormalized, positions auto-assigned 1..n; soft-dedupes via
+  `(user_id, lower(trim(title)), lower(trim(artist)))` → 409 reusing the existing
+  `_conflict` detail `"Album already in your shelf (id=N)"`), and `upload_cover`.
+  `services/artwork.py`: **`store_cover_bytes(data, album_id, *, covers_dir) ->
+  str | None`** — sniffs bytes, deletes any previous `{album_id}.*` (ext may
+  differ) before writing, returns filename; `None` on any failure.
+- **Deviation — raw-bytes PUT (not multipart):** the issue said "(multipart,
+  field `file`)" but adding `python-multipart` was out of scope; the endpoint
+  takes the raw body via an async dependency `read_raw_body(request)` (route stays
+  sync, matching codebase style), ignores `Content-Type`, sniffs magic bytes
+  (jpeg/png/gif/webp), 400 (never 500) for empty / >15 MB `MAX_COVER_BYTES` /
+  non-image payloads on any **owned** album (foreign/missing → 404 via
+  `get_owned_album`). Sets `album.cover_path`, leaves `cover_url` as-is (imported
+  albums keep their remote fallback). `store_cover_bytes` returns `str | None`
+  (router maps `None` → 400) to preserve the module's never-raise ethos.
+- **Backend tests** (appended to `test_albums.py`, reusing its fixtures): manual
+  happy path (201 + track positions/count), minimal (no tracks), trim, 409
+  soft-dupe, per-user isolation, read-only 403, 422 matrix (blank title/artist,
+  blank track title, negative duration, year bounds + max-year-ok); cover upload
+  jpeg/png with a bogus `Content-Type` (ignored), replace (old file gone), non-
+  image / oversized / empty → 400, replace on an imported album, foreign + missing
+  → 404, read-only 403; `store_cover_bytes` unit tests. Full suite **209 passed**
+  (was 182).
+- **Frontend.** `types.ts`: `ManualAlbumInput`, `ManualTrackInput`, `AlbumSource`
+  += `'manual'`. `api.ts`: `createManualAlbum(input)` JSON POST;
+  `uploadAlbumCover(id, blob)` raw `fetch` PUT (`Content-Type: image/jpeg` +
+  Bearer, surfaces 400 detail, network error → `ApiError(0)`). New
+  `components/coverNormalize.ts` (`normalizeCoverFile`: `createImageBitmap` →
+  `<img>` fallback, ≤2000 px longest side, `.toBlob('image/jpeg', 0.9)` — HEIC/
+  huge-photo safe) and `components/CoverPicker.tsx` ("Upload image" +
+  "Take photo" `capture="environment"`, normalized preview + Remove, busy/error
+  states, `onChange(blob|null)`). New `pages/ManualAlbumPage.tsx` at `/add/manual`:
+  required title/artist, optional year/label/country/note, **dynamic tracklist
+  editor** (add/remove rows; `parseDurationInput` handles `m:ss` or plain seconds;
+  per-row + year + required-field validation), submit → create → upload cover →
+  navigate `/album/{id}`; failed cover upload **keeps the album** w/ inline error +
+  Retry upload + view link; 409 → existing-album link. `AlbumDetailPage`: "Replace
+  cover" mounts `CoverPicker`, `saveCover()` updates in place, Cover updated.
+  confirmation. `AddAlbumPage` manual-link; `SourceBadge` `manual` label.
+- **Frontend tests:** `ManualAlbumPage.test.tsx` (validation, dynamic tracks,
+  m:ss/ss parsing + `parseDurationInput` unit block, submit → create+upload+
+  navigate, upload-failure retry, 409 link), `CoverPicker.test.tsx` (accept/
+  capture attrs, normalization + blob reported, remove clears, unreadable-image
+  error — `vi.mock`s `./coverNormalize`), `api.test.ts` (+4), detail-page
+  replace-cover success + failed-upload (+2; hoisted api mock gained
+  `uploadAlbumCover`), `SourceBadge.test.tsx` (new), AddAlbumPage manual-link.
+  jsdom can't decode images, so `normalizeCoverFile` is mocked in tests and file
+  inputs get their files via `Object.defineProperty` + `fireEvent.change` (hidden
+  inputs, so `user.upload`'s visibility checks are bypassed). Stubbed
+  `URL.createObjectURL`/`revokeObjectURL` like `CoverImage.test.tsx`. `npm test`
+  **142 passed** (was 117), `npm run build` green.
+- **Docs:** PLAN.md §5 (both endpoints + `ManualAlbumInput` jsonc + raw-bytes PUT
+  note), §4 (`source` includes `manual`), §7 (`/add/manual` + CoverPicker +
+  replace-cover + manual badge); README feature bullet;
+  `docs/issues/011-manual-album-entry.md` acceptance boxes checked, Notes record
+  the raw-bytes and 409-detail-string deviations, `Status: done`.
+- **For the coordinator:** ISSUES.md index row for #11 was **not** touched (outside
+  this issue's file scope — flip to done on commit). Docker frontend on :8081 is
+  still the stale pre-#8 build; `npm run dev` on 5173 was the source of truth for
+  the new route. No DB migration needed (source String(20) / external_id
+  String(64)).
+
+## 2026-10-08 — #11 cover upload switched to multipart — coordinator
+
+- User requested the standard multipart upload instead of the agent's raw-bytes
+  PUT. Added `python-multipart==0.0.32` to `backend/requirements.txt` (+ venv
+  install). `PUT /api/albums/{id}/cover` now accepts a multipart `file` field
+  (`UploadFile`), read with a bounded 64 kB-chunk helper that stops once
+  `MAX_COVER_BYTES` is exceeded; sniff-based validation and the 400 error family
+  are unchanged. Frontend `uploadAlbumCover` sends `FormData` (browser sets the
+  boundary). Cover-upload tests updated to `files=` payloads; `get_owned_album`,
+  `store_cover_bytes`, replace-deletes-old-ext logic all untouched.
+- Verification pending: backend pytest + `npm test` + `npm run build` re-run at
+  commit time.

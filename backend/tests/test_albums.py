@@ -193,11 +193,13 @@ ALL_ENDPOINTS = [
     ("GET", "/api/search/albums?q=x", None),
     ("POST", "/api/albums/import", {"source": "deezer", "external_id": "1"}),
     ("POST", "/api/albums/preview", {"source": "deezer", "external_id": "1"}),
+    ("POST", "/api/albums/manual", {"title": "T", "artist": "A"}),
     ("GET", "/api/albums", None),
     ("GET", "/api/albums/1", None),
     ("PATCH", "/api/albums/1", {"favorite": True}),
     ("DELETE", "/api/albums/1", None),
     ("GET", "/api/albums/1/cover", None),
+    ("PUT", "/api/albums/1/cover", None),
     ("POST", "/api/albums/1/plays", {}),
     ("GET", "/api/albums/1/plays", None),
     ("DELETE", "/api/albums/1/plays/1", None),
@@ -1093,3 +1095,375 @@ def test_resolve_cover_file_safety(tmp_path):
     assert artwork.resolve_cover_file("../outside.jpg", root) is None
     assert artwork.resolve_cover_file("sub/1.jpg", root) is None
     assert artwork.resolve_cover_file("..", root) is None
+
+
+# --- manual album entry (issue #11) ------------------------------------------
+
+
+def _manual_payload(**overrides):
+    payload = {
+        "title": "Midnight Crush",
+        "artist": "Tokyo Heartbeat",
+        "year": 1983,
+        "label": "Horizon",
+        "country": "JP",
+        "favorite": True,
+        "note": "hand catalogued",
+        "tracks": [
+            {"title": "Neon Rain", "duration_seconds": 214},
+            {"title": "Glass City"},
+            {"title": "After Hours", "duration_seconds": 0},
+        ],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _manual_album(client, headers, **overrides):
+    """Create a manual album via the API and return its AlbumOut body."""
+    res = client.post(
+        "/api/albums/manual", json=_manual_payload(**overrides), headers=headers
+    )
+    assert res.status_code == 201, res.text
+    return res.json()
+
+
+def test_manual_happy_path(client, headers, db_session, admin):
+    body = _manual_album(client, headers)
+    assert body["title"] == "Midnight Crush"
+    assert body["artist"] == "Tokyo Heartbeat"
+    assert body["source"] == "manual"
+    assert len(body["external_id"]) == 32  # uuid4().hex
+    assert body["year"] == 1983
+    assert body["label"] == "Horizon"
+    assert body["country"] == "JP"
+    assert body["favorite"] is True
+    assert body["note"] == "hand catalogued"
+    assert body["cover_url"] is None
+    assert body["last_played_at"] is None
+    assert body["track_count"] == 3
+    # positions auto-assigned 1..n in submission order
+    assert [t["position"] for t in body["tracks"]] == [1, 2, 3]
+    assert [t["title"] for t in body["tracks"]] == [
+        "Neon Rain",
+        "Glass City",
+        "After Hours",
+    ]
+    assert body["tracks"][0]["duration_seconds"] == 214
+    assert body["tracks"][1]["duration_seconds"] is None  # omitted -> null
+    assert body["tracks"][2]["duration_seconds"] == 0
+
+    album = db_session.get(Album, body["id"])
+    assert album.source == "manual"
+    assert album.external_id == body["external_id"]
+    assert album.cover_url is None
+    assert album.cover_path is None
+    assert album.metadata_ == {}  # ORM attr name, JSONB column
+    assert album.user_id == admin["id"]
+
+
+def test_manual_trims_title_artist(client, headers, db_session):
+    body = _manual_album(
+        client, headers,
+        title="  Midnight Crush ", artist=" Tokyo Heartbeat  ",
+    )
+    assert body["title"] == "Midnight Crush"
+    assert body["artist"] == "Tokyo Heartbeat"
+    assert db_session.get(Album, body["id"]).title == "Midnight Crush"
+
+
+def test_manual_minimal_payload(client, headers):
+    body = _manual_album(
+        client, headers, tracks=[], favorite=False, note=None, year=None, label=None,
+    )
+    assert body["track_count"] == 0
+    assert body["tracks"] == []
+    assert body["favorite"] is False
+    assert body["note"] is None
+    assert body["year"] is None
+    assert body["label"] is None
+
+
+def test_manual_duplicate_soft_dedupe_is_409(client, headers):
+    first = _manual_album(client, headers)
+    res = client.post(
+        "/api/albums/manual",
+        json={"title": "  MIDNIGHT CRUSH  ", "artist": "tokyo heartbeat"},
+        headers=headers,
+    )
+    assert res.status_code == 409
+    assert str(first["id"]) in res.json()["detail"]
+
+
+def test_manual_duplicate_is_per_user(client, headers, other_user):
+    mine = client.post(
+        "/api/albums/manual",
+        json={"title": "Midnight Crush", "artist": "Tokyo Heartbeat"},
+        headers=headers,
+    )
+    theirs = client.post(
+        "/api/albums/manual",
+        json={"title": "Midnight Crush", "artist": "Tokyo Heartbeat"},
+        headers=other_user["headers"],
+    )
+    assert mine.status_code == 201
+    assert theirs.status_code == 201
+    assert mine.json()["id"] != theirs.json()["id"]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"title": "   ", "artist": "Tokyo Heartbeat"},   # all-whitespace title
+        {"title": "", "artist": "Tokyo Heartbeat"},      # empty title
+        {"title": "Midnight Crush", "artist": "   "},    # all-whitespace artist
+        {"title": "Midnight Crush", "artist": ""},       # empty artist
+    ],
+)
+def test_manual_blank_title_or_artist_is_422(client, headers, payload):
+    res = client.post("/api/albums/manual", json=payload, headers=headers)
+    assert res.status_code == 422
+
+
+def test_manual_blank_track_title_is_422(client, headers):
+    res = client.post(
+        "/api/albums/manual",
+        json={
+            "title": "X",
+            "artist": "Y",
+            "tracks": [{"title": "  "}, {"title": "Fine"}],
+        },
+        headers=headers,
+    )
+    assert res.status_code == 422
+
+
+def test_manual_negative_duration_is_422(client, headers):
+    res = client.post(
+        "/api/albums/manual",
+        json={
+            "title": "X",
+            "artist": "Y",
+            "tracks": [{"title": "T", "duration_seconds": -1}],
+        },
+        headers=headers,
+    )
+    assert res.status_code == 422
+
+
+def test_manual_absurd_year_is_422(client, headers):
+    upper = datetime.now(timezone.utc).year + 1
+    for year in (999, upper + 1, 10000):
+        res = client.post(
+            "/api/albums/manual",
+            json={"title": "X", "artist": "Y", "year": year},
+            headers=headers,
+        )
+        assert res.status_code == 422, year
+
+
+def test_manual_year_upper_bound_ok(client, headers):
+    upper = datetime.now(timezone.utc).year + 1
+    res = client.post(
+        "/api/albums/manual",
+        json={"title": "X", "artist": "Y", "year": upper},
+        headers=headers,
+    )
+    assert res.status_code == 201, res.text
+
+
+def test_manual_forbidden_for_read_only(client, readonly_headers):
+    res = client.post(
+        "/api/albums/manual",
+        json={"title": "X", "artist": "Y"},
+        headers=readonly_headers,
+    )
+    assert res.status_code == 403
+    assert "Read-only" in res.json()["detail"]
+
+
+# --- cover upload (issue #11) ------------------------------------------------
+
+
+def test_cover_upload_jpeg_served_back(client, headers, cover_root):
+    album = _manual_album(client, headers)
+    res = client.put(
+        f"/api/albums/{album['id']}/cover",
+        files={"file": ("cover.jpg", JPEG_MAGIC, "image/jpeg")},
+        headers=headers,
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["id"] == album["id"]
+    assert body["source"] == "manual"
+    assert body["cover_url"] is None  # left untouched by uploads
+    assert (cover_root / f"{album['id']}.jpg").read_bytes() == JPEG_MAGIC
+
+    served = client.get(f"/api/albums/{album['id']}/cover", headers=headers)
+    assert served.status_code == 200
+    assert served.headers["content-type"].startswith("image/jpeg")
+    assert served.content == JPEG_MAGIC
+
+
+def test_cover_upload_png_content_type(client, headers, cover_root):
+    album = _manual_album(client, headers)
+    res = client.put(
+        f"/api/albums/{album['id']}/cover",
+        files={"file": ("cover.png", PNG_BYTES, "image/png")},
+        headers=headers,
+    )
+    assert res.status_code == 200, res.text
+    served = client.get(f"/api/albums/{album['id']}/cover", headers=headers)
+    assert served.status_code == 200
+    assert served.headers["content-type"].startswith("image/png")
+    assert served.content == PNG_BYTES
+
+
+def test_cover_upload_ignores_content_type_header(client, headers, cover_root):
+    album = _manual_album(client, headers)
+    res = client.put(
+        f"/api/albums/{album['id']}/cover",
+        files={"file": ("cover", PNG_BYTES, "application/octet-stream")},
+        headers=headers,
+    )
+    assert res.status_code == 200, res.text
+    assert (cover_root / f"{album['id']}.png").exists()
+
+
+def test_cover_upload_replace_deletes_old_file(client, headers, cover_root):
+    album = _manual_album(client, headers)
+    album_id = album["id"]
+    assert (
+        client.put(
+            f"/api/albums/{album_id}/cover",
+            files={"file": ("cover.jpg", JPEG_MAGIC, "image/jpeg")},
+            headers=headers,
+        ).status_code
+        == 200
+    )
+    assert (cover_root / f"{album_id}.jpg").exists()
+    assert (
+        client.put(
+            f"/api/albums/{album_id}/cover",
+            files={"file": ("cover.png", PNG_BYTES, "image/png")},
+            headers=headers,
+        ).status_code
+        == 200
+    )
+    assert not (cover_root / f"{album_id}.jpg").exists()  # old ext replaced
+    assert (cover_root / f"{album_id}.png").exists()
+
+
+def test_cover_upload_non_image_is_400(client, headers):
+    album = _manual_album(client, headers)
+    res = client.put(
+        f"/api/albums/{album['id']}/cover",
+        files={"file": ("cover.jpg", b"definitely-not-an-image", "image/jpeg")},
+        headers=headers,
+    )
+    assert res.status_code == 400, res.text
+    assert "not a supported image" in res.json()["detail"].lower()
+
+
+def test_cover_upload_oversized_is_400(client, headers, cover_root):
+    album = _manual_album(client, headers)
+    big = JPEG_MAGIC + b"\x00" * artwork.MAX_COVER_BYTES  # over the cap
+    res = client.put(
+        f"/api/albums/{album['id']}/cover",
+        files={"file": ("big.jpg", big, "image/jpeg")},
+        headers=headers,
+    )
+    assert res.status_code == 400, res.text
+    assert "too large" in res.json()["detail"].lower()
+    assert list(cover_root.iterdir()) == []  # nothing stored
+
+
+def test_cover_upload_empty_file_is_rejected(client, headers):
+    """An empty-file multipart part parses as a plain field → FastAPI 422
+    (`Expected UploadFile, received: <class 'str'>`); the handler never sees
+    zero bytes. Assert the framework-level rejection stands."""
+    album = _manual_album(client, headers)
+    res = client.put(
+        f"/api/albums/{album['id']}/cover",
+        files={"file": ("", b"", "image/jpeg")},
+        headers=headers,
+    )
+    assert res.status_code == 422, res.text
+    # Validation errors surface as a list of {loc, msg, ...} entries.
+    assert res.json()["detail"][0]["loc"] == ["body", "file"]
+
+
+def test_cover_upload_works_for_imported_album(
+    client, headers, cover_root, mock_import, mock_artwork
+):
+    mock_import.install()
+    mock_artwork.install()
+    res = client.post(
+        "/api/albums/import",
+        json={"source": "deezer", "external_id": "302127"},
+        headers=headers,
+    )
+    assert res.status_code == 201
+    album_id = res.json()["id"]
+    put = client.put(
+        f"/api/albums/{album_id}/cover",
+        files={"file": ("cover.png", PNG_BYTES, "image/png")},
+        headers=headers,
+    )
+    assert put.status_code == 200, put.text
+    assert put.json()["cover_url"] == "https://example.com/cover.jpg"  # fallback kept
+    served = client.get(f"/api/albums/{album_id}/cover", headers=headers)
+    assert served.status_code == 200
+    assert served.headers["content-type"].startswith("image/png")
+    assert served.content == PNG_BYTES
+
+
+def test_cover_upload_404_foreign(client, headers, other_user, db_session):
+    theirs = make_album(db_session, other_user["id"], title="Bobs Record")
+    res = client.put(
+        f"/api/albums/{theirs.id}/cover",
+        files={"file": ("cover.jpg", JPEG_MAGIC, "image/jpeg")},
+        headers=headers,
+    )
+    assert res.status_code == 404
+
+
+def test_cover_upload_404_missing(client, headers):
+    res = client.put(
+        "/api/albums/999999/cover",
+        files={"file": ("cover.jpg", JPEG_MAGIC, "image/jpeg")},
+        headers=headers,
+    )
+    assert res.status_code == 404
+
+
+def test_cover_upload_forbidden_for_read_only(
+    client, readonly_headers, db_session, admin
+):
+    album = make_album(db_session, admin["id"], title="Read Only")
+    res = client.put(
+        f"/api/albums/{album.id}/cover",
+        files={"file": ("cover.jpg", JPEG_MAGIC, "image/jpeg")},
+        headers=readonly_headers,
+    )
+    assert res.status_code == 403
+
+
+def test_store_cover_bytes_replaces_different_extension(tmp_path):
+    root = tmp_path / "covers"
+    root.mkdir()
+    (root / "7.jpg").write_bytes(b"old-art")
+    name = artwork.store_cover_bytes(PNG_BYTES, 7, covers_dir=root)
+    assert name == "7.png"
+    assert not (root / "7.jpg").exists()  # stale old-ext file removed
+    assert (root / "7.png").read_bytes() == PNG_BYTES
+
+
+def test_store_cover_bytes_rejects_non_image_and_oversized(tmp_path):
+    root = tmp_path / "covers"
+    root.mkdir()
+    assert artwork.store_cover_bytes(b"nope", 8, covers_dir=root) is None
+    assert (
+        artwork.store_cover_bytes(PNG_BYTES, 8, covers_dir=root, max_bytes=4) is None
+    )
+    assert list(root.iterdir()) == []  # nothing written on failure

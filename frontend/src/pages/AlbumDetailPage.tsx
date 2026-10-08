@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Disc3, Star, Trash2 } from 'lucide-react'
+import { Disc3, ImagePlus, Star, Trash2 } from 'lucide-react'
 import { api, ApiError } from '../api'
 import { useAuth } from '../auth'
 import type { Album, Play, Tag } from '../types'
 import { CoverImage } from '../components/CoverImage'
+import { CoverPicker } from '../components/CoverPicker'
 import { SourceBadge } from '../components/SourceBadge'
 import { TagEditor } from '../components/TagEditor'
 import {
@@ -35,6 +36,11 @@ export function AlbumDetailPage() {
   const [noteSaved, setNoteSaved] = useState(false)
   const [spinning, setSpinning] = useState(false)
   const [confirmingRemove, setConfirmingRemove] = useState(false)
+
+  const [showCoverPicker, setShowCoverPicker] = useState(false)
+  const [coverDraft, setCoverDraft] = useState<Blob | null>(null)
+  const [savingCover, setSavingCover] = useState(false)
+  const [coverSaved, setCoverSaved] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -162,6 +168,24 @@ export function AlbumDetailPage() {
     }
   }
 
+  async function saveCover() {
+    if (!album || !canEdit || !coverDraft) return
+    setSavingCover(true)
+    setActionError(null)
+    setCoverSaved(false)
+    try {
+      const updated = await api.uploadAlbumCover(album.id, coverDraft)
+      setAlbum(updated)
+      setCoverDraft(null)
+      setShowCoverPicker(false)
+      setCoverSaved(true)
+    } catch (err) {
+      fail(err, 'Could not upload the cover image.')
+    } finally {
+      setSavingCover(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="page-inner">
@@ -216,6 +240,35 @@ export function AlbumDetailPage() {
             alt={`${album.title} cover`}
             className="detail-cover-img"
           />
+          {showCoverPicker && (
+            <div className="cover-replace-block">
+              <p className="field-note">
+                A file or phone photo is normalized to a JPEG before upload.
+              </p>
+              <CoverPicker onChange={setCoverDraft} disabled={!canEdit || savingCover} />
+              <div className="detail-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  disabled={!canEdit || savingCover || !coverDraft}
+                  onClick={saveCover}
+                >
+                  {savingCover ? 'Uploading…' : 'Save cover'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  disabled={savingCover}
+                  onClick={() => {
+                    setShowCoverPicker(false)
+                    setCoverDraft(null)
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="detail-info">
@@ -260,6 +313,17 @@ export function AlbumDetailPage() {
             >
               <Disc3 size={16} aria-hidden /> {spinning ? 'Logging…' : 'I spun this'}
             </button>
+            <button
+              type="button"
+              className="btn"
+              disabled={!canEdit}
+              onClick={() => setShowCoverPicker((v) => !v)}
+            >
+              <ImagePlus size={16} aria-hidden /> Replace cover
+            </button>
+            {coverSaved && !showCoverPicker && (
+              <span className="muted">Cover updated.</span>
+            )}
             <button
               type="button"
               className="btn btn-danger"

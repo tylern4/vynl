@@ -25,7 +25,7 @@ export interface LoginResult {
   user: User
 }
 
-export type AlbumSource = 'deezer' | 'musicbrainz'
+export type AlbumSource = 'deezer' | 'musicbrainz' | 'manual'
 
 export type AlbumSort = 'added' | 'title' | 'artist' | 'year' | 'played'
 
@@ -70,6 +70,27 @@ export interface Album {
 export interface AlbumImport {
   source: AlbumSource
   external_id: string
+}
+
+/** One track row for `POST /albums/manual` (issue #11). */
+export interface ManualTrackInput {
+  title: string
+  duration_seconds?: number | null
+}
+
+/**
+ * Body of `POST /albums/manual` — a manually entered album (no provider).
+ * Title/artist required; positions are auto-assigned server-side.
+ */
+export interface ManualAlbumInput {
+  title: string
+  artist: string
+  year?: number | null
+  label?: string | null
+  country?: string | null
+  favorite?: boolean
+  note?: string | null
+  tracks?: ManualTrackInput[]
 }
 
 /** One dry-run track from `POST /albums/preview` (issue #13). */
