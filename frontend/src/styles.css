@@ -1,3 +1,9 @@
+/*
+ * Theme tokens. `--accent` is the warm interactive background (buttons, active
+ * chips) and always pairs with `--on-accent` text; `--accent-ink` is the same
+ * hue used as *foreground* (links, icons, active nav) and differs from the
+ * button color in dark mode so it stays readable on dark surfaces.
+ */
 :root {
   color-scheme: light;
   --bg: #f6f5f2;
@@ -5,13 +11,18 @@
   --surface-alt: #fdfcf9;
   --border: #e5e1da;
   --text: #2b2a26;
-  --muted: #8a867c;
-  --accent: #d0763c;
-  --accent-dark: #b05e28;
+  --muted: #757066;
+  --accent: #b85c1e;
+  --accent-dark: #a04e17;
+  --accent-ink: #b85c1e;
+  --on-accent: #ffffff;
   --hover: #f1efe9;
   --danger: #c0392b;
   --danger-bg: #fdecea;
   --danger-border: #f5c6c0;
+  /* MusicBrainz brand badge text/border (AA on --surface). */
+  --mb: #4f63c8;
+  --mb-border: #7c8ae6;
   --backdrop: rgba(43, 42, 38, 0.45);
   --shadow: 0 1px 3px rgba(43, 42, 38, 0.08), 0 8px 24px rgba(43, 42, 38, 0.06);
   --radius: 12px;
@@ -27,12 +38,16 @@
   --border: #38383f;
   --text: #ece9e4;
   --muted: #a39d92;
-  --accent: #e08a4f;
-  --accent-dark: #f0a06a;
+  --accent: #b85c1e;
+  --accent-dark: #a04e17;
+  --accent-ink: #f0a06a;
+  --on-accent: #ffffff;
   --hover: #2c2c33;
   --danger: #ff7a6c;
   --danger-bg: #3a2220;
   --danger-border: #6b3a35;
+  --mb: #9dacff;
+  --mb-border: #6b7ad9;
   --backdrop: rgba(0, 0, 0, 0.6);
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
 }
@@ -70,7 +85,7 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-ink);
   outline-offset: -1px;
 }
 
@@ -101,7 +116,7 @@ textarea:focus {
 }
 
 .brand svg {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .topnav {
@@ -132,7 +147,7 @@ textarea:focus {
 
 .topnav a.active {
   background: var(--hover);
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .topbar-actions {
@@ -212,7 +227,7 @@ textarea:focus {
 .btn-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .btn-primary:hover {
@@ -307,7 +322,7 @@ textarea:focus {
 }
 
 .auth-title svg {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .auth-sub {
@@ -323,7 +338,7 @@ textarea:focus {
 }
 
 .auth-footer a {
-  color: var(--accent-dark);
+  color: var(--accent-ink);
   font-weight: 600;
   text-decoration: none;
 }
@@ -331,8 +346,9 @@ textarea:focus {
 .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  border-top-color: #fff;
+  border: 2px solid var(--on-accent);
+  border-right-color: transparent;
+  border-bottom-color: transparent;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -506,12 +522,12 @@ textarea:focus {
   top: 0.4rem;
   right: 0.4rem;
   background: var(--backdrop);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .fav-btn:hover {
   background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .fav-btn.is-fav {
@@ -559,11 +575,12 @@ textarea:focus {
 .tag-chip-btn.is-active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 a.tag-chip-link {
   text-decoration: none;
+  color: inherit;
 }
 
 a.tag-chip-link:hover {
@@ -792,17 +809,13 @@ a.result-row {
 }
 
 .source-deezer {
-  color: var(--accent-dark);
+  color: var(--accent-ink);
   border-color: var(--accent);
 }
 
 .source-musicbrainz {
-  color: #667eea;
-  border-color: #a5b4fb;
-}
-
-:root[data-theme='dark'] .source-musicbrainz {
-  color: #9dacff;
+  color: var(--mb);
+  border-color: var(--mb-border);
 }
 
 .last-played {
@@ -848,10 +861,17 @@ a.result-row {
 
 /* ---------- Tracklist ---------- */
 
+.tracklist-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .tracklist {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  /* Give the title column room; the wrapper scrolls instead of squashing. */
+  min-width: 420px;
 }
 
 .tracklist th,
@@ -963,11 +983,13 @@ a.result-row {
 
 /* ---------- Focus states ---------- */
 
+a:focus-visible,
 .btn:focus-visible,
 .icon-btn:focus-visible,
 .tag-chip-btn:focus-visible,
+.tag-chip-remove:focus-visible,
 .mode-toggle button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-ink);
   outline-offset: 2px;
 }
 
@@ -1019,7 +1041,7 @@ a.result-row {
 
 .mode-toggle button.is-active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .rec-spin-row {
@@ -1059,6 +1081,7 @@ a.result-row {
   display: block;
   flex-shrink: 0;
   text-decoration: none;
+  color: inherit;
 }
 
 .rec-cover {
@@ -1088,7 +1111,7 @@ a.result-row {
 }
 
 .rec-title-link:hover .rec-title {
-  color: var(--accent-dark);
+  color: var(--accent-ink);
 }
 
 .rec-title {
@@ -1121,7 +1144,7 @@ a.result-row {
 
 .rec-reason svg {
   flex-shrink: 0;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .rec-days {
@@ -1246,5 +1269,148 @@ a.result-row {
 
   .rec-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Loading skeletons (shelf / detail) ---------- */
+
+.shelf-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  gap: 1rem;
+}
+
+.shelf-skeleton {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+  animation: recPulse 1.2s ease-in-out infinite;
+}
+
+.shelf-skeleton-cover {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--hover);
+}
+
+.shelf-skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.55rem 0.65rem 0.6rem;
+}
+
+.shelf-skeleton-line,
+.detail-skeleton-line {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--hover);
+}
+
+.shelf-skeleton-line.short,
+.detail-skeleton-line.short {
+  width: 55%;
+}
+
+.detail-skeleton {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+  animation: recPulse 1.2s ease-in-out infinite;
+}
+
+.detail-skeleton-cover {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  background: var(--hover);
+}
+
+.detail-skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-top: 0.4rem;
+}
+
+.detail-skeleton-line.big {
+  height: 1.4rem;
+}
+
+.detail-skeleton-line {
+  height: 12px;
+}
+
+/* ---------- Small helper states ---------- */
+
+/* "What to try next" hint under an inline import/search error. */
+.result-hint {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+/* Tiny-shelf rerolls: explains why “Show me another” repeated a card. */
+.rec-repeat {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+/* Auth form helper text / pending-state copy. */
+.field-note {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.auth-pending {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- Small screens (≤ 480 px) ---------- */
+
+@media (max-width: 480px) {
+  .result-row {
+    flex-wrap: wrap;
+  }
+
+  .result-info {
+    flex: 1 1 calc(100% - 44px - 0.8rem);
+    min-width: 0;
+  }
+
+  .result-row .source-badge {
+    margin-left: auto;
+  }
+
+  .shelf-skeleton-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.7rem;
+  }
+
+  .tag-chip-row .tag-chip {
+    max-width: 100%;
+  }
+}
+
+/* ---------- Loading skeletons responsive ---------- */
+
+@media (max-width: 640px) {
+  .shelf-skeleton-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.7rem;
+  }
+
+  .detail-skeleton {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .detail-skeleton-cover {
+    max-width: 320px;
+    margin: 0 auto;
   }
 }

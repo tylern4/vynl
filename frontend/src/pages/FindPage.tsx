@@ -49,6 +49,7 @@ export function FindPage() {
   const [songError, setSongError] = useState<string | null>(null)
   const [albumError, setAlbumError] = useState<string | null>(null)
   const [searching, setSearching] = useState(false)
+  const [searchKey, setSearchKey] = useState(0)
   const latestQuery = useRef('')
 
   useEffect(() => {
@@ -76,17 +77,22 @@ export function FindPage() {
       return
     }
     setSearching(true)
+    setSongError(null)
+    setAlbumError(null)
     const timer = setTimeout(async () => {
-      const { songs: s, albums: a } = await runLibrarySearch(q)
-      if (latestQuery.current !== q) return
-      setSongs(s.items)
-      setAlbums(a.items)
-      setSongError(s.ok ? null : s.error)
-      setAlbumError(a.ok ? null : a.error)
-      setSearching(false)
+      try {
+        const { songs: s, albums: a } = await runLibrarySearch(q)
+        if (latestQuery.current !== q) return
+        setSongs(s.items)
+        setAlbums(a.items)
+        setSongError(s.ok ? null : s.error)
+        setAlbumError(a.ok ? null : a.error)
+      } finally {
+        if (latestQuery.current === q) setSearching(false)
+      }
     }, DEBOUNCE_MS)
     return () => clearTimeout(timer)
-  }, [query])
+  }, [query, searchKey])
 
   const q = query.trim().toLowerCase()
   const tagHits = q ? allTags.filter((t) => t.name.includes(q)) : []
@@ -108,7 +114,11 @@ export function FindPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        {searching && <span className="muted search-hint">Searching…</span>}
+        {searching && (
+          <span className="muted search-hint" role="status">
+            Searching…
+          </span>
+        )}
       </div>
 
       {!query.trim() && (
@@ -149,12 +159,19 @@ export function FindPage() {
         </section>
       )}
 
-      <section className="search-section" aria-label="Songs">
+      <section className="search-section" aria-label="Songs" aria-live="polite">
         <h2>Songs ({songs.length})</h2>
         {songError && (
-          <p className="muted" role="alert">
-            Songs unavailable: {songError}
-          </p>
+          <div className="error-banner" role="alert">
+            Songs unavailable: {songError}{' '}
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => setSearchKey((k) => k + 1)}
+            >
+              Retry songs
+            </button>
+          </div>
         )}
         {songs.length > 0 && (
           <ul className="result-list">
@@ -185,12 +202,19 @@ export function FindPage() {
         )}
       </section>
 
-      <section className="search-section" aria-label="Albums">
+      <section className="search-section" aria-label="Albums" aria-live="polite">
         <h2>Albums ({albums.length})</h2>
         {albumError && (
-          <p className="muted" role="alert">
-            Albums unavailable: {albumError}
-          </p>
+          <div className="error-banner" role="alert">
+            Albums unavailable: {albumError}{' '}
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => setSearchKey((k) => k + 1)}
+            >
+              Retry albums
+            </button>
+          </div>
         )}
         {albums.length > 0 && (
           <div className="shelf-grid">

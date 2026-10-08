@@ -251,6 +251,23 @@ describe('RecommendPage', () => {
     expect(await screen.findByText('Remain in Light')).toBeInTheDocument()
   })
 
+  it('explains when a reroll must repeat a record on a tiny shelf', async () => {
+    const user = userEvent.setup()
+    // Initial spin delivers the slate; every reroll keeps returning card 1, so
+    // the duplicate-guard gives up and accepts it.
+    mocks.api.getRecommendations
+      .mockResolvedValueOnce(recs)
+      .mockResolvedValue([recs[0]])
+    renderRec()
+    await screen.findByText('Remain in Light')
+
+    const card = findCard('Remain in Light')
+    await user.click(within(card).getByRole('button', { name: 'Show me another' }))
+    expect(await screen.findByText(/Tiny shelf/)).toBeInTheDocument()
+    // The note explains why the record repeated instead of moving on.
+    expect(screen.getByText(/rerolls fall back to repeats/)).toBeInTheDocument()
+  })
+
   it('disables "Spun it" for read-only accounts', async () => {
     mocks.useAuth.mockReturnValue(defaultAuth({ canEdit: false }))
     renderRec()

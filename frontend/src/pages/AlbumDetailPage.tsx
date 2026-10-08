@@ -165,7 +165,16 @@ export function AlbumDetailPage() {
   if (loading) {
     return (
       <div className="page-inner">
-        <p className="muted">Loading album…</p>
+        <div className="detail-skeleton" data-testid="detail-skeleton" aria-hidden="true">
+          <div className="detail-skeleton-cover" />
+          <div className="detail-skeleton-lines">
+            <div className="detail-skeleton-line big" />
+            <div className="detail-skeleton-line" />
+            <div className="detail-skeleton-line short" />
+            <div className="detail-skeleton-line" />
+            <div className="detail-skeleton-line short" />
+          </div>
+        </div>
       </div>
     )
   }
@@ -288,7 +297,8 @@ export function AlbumDetailPage() {
         {tracks.length === 0 ? (
           <p className="muted">No tracklist on file for this record.</p>
         ) : (
-          <table className="tracklist">
+          <div className="tracklist-scroll">
+            <table className="tracklist">
             <thead>
               <tr>
                 <th scope="col">#</th>
@@ -316,6 +326,7 @@ export function AlbumDetailPage() {
               </tr>
             </tfoot>
           </table>
+          </div>
         )}
       </section>
 
@@ -359,31 +370,33 @@ export function AlbumDetailPage() {
         </div>
       </section>
 
-      <section className="card section">
-        <h2>Play history</h2>
-        {plays.length === 0 ? (
-          <p className="muted">No spins logged yet — hit “I spun this”.</p>
-        ) : (
-          <ol className="play-list">
-            {plays.map((play) => (
-              <li key={play.id}>
-                <span>
-                  {timeAgo(play.played_at) ?? '—'}{' '}
-                  <span className="muted">({formatDate(play.played_at)})</span>
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  aria-label="Delete play"
-                  disabled={!canEdit}
-                  onClick={() => removePlay(play.id)}
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
-          </ol>
-        )}
+      <section className="card section" aria-labelledby="play-history-heading">
+        <h2 id="play-history-heading">Play history</h2>
+        <div aria-live="polite">
+          {plays.length === 0 ? (
+            <p className="muted">No spins logged yet — hit “I spun this”.</p>
+          ) : (
+            <ol className="play-list">
+              {plays.map((play) => (
+                <li key={play.id}>
+                  <span>
+                    {timeAgo(play.played_at) ?? '—'}{' '}
+                    <span className="muted">({formatDate(play.played_at)})</span>
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    aria-label="Delete play"
+                    disabled={!canEdit}
+                    onClick={() => removePlay(play.id)}
+                  >
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
       </section>
     </div>
   )

@@ -161,6 +161,8 @@ describe('AddAlbumPage', () => {
     const button = await screen.findByRole('button', { name: /Import/ })
     await user.click(button)
     expect(await screen.findByText('Provider error: deezer hung up')).toBeInTheDocument()
+    // Failure guidance tells the user what to do next.
+    expect(screen.getByText(/music service may be briefly unavailable/)).toBeInTheDocument()
 
     mocks.api.importAlbum.mockResolvedValue(importedAlbum)
     await user.click(screen.getByRole('button', { name: 'Retry' }))

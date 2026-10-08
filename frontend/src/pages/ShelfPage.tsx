@@ -186,7 +186,19 @@ export function ShelfPage() {
         </div>
       )}
 
-      {loading && <p className="muted">Loading your shelf…</p>}
+      {loading && (
+        <div className="shelf-skeleton-grid" data-testid="shelf-skeleton" aria-hidden="true">
+          {[0, 1, 2, 3, 4, 5].map((k) => (
+            <div key={k} className="shelf-skeleton">
+              <div className="shelf-skeleton-cover" />
+              <div className="shelf-skeleton-lines">
+                <div className="shelf-skeleton-line" />
+                <div className="shelf-skeleton-line short" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {emptyShelf && (
         <div className="empty-state">
@@ -218,7 +230,7 @@ export function ShelfPage() {
       )}
 
       {!loading && visible.length > 0 && (
-        <div className="shelf-grid" data-testid="shelf-grid">
+        <div className="shelf-grid" data-testid="shelf-grid" aria-live="polite">
           {visible.map((album) => (
             <AlbumCard
               key={album.id}

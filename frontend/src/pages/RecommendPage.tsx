@@ -25,6 +25,8 @@ interface RecCard {
   rec: Recommendation
   justSpun: boolean
   busy: 'reroll' | 'log' | null
+  /** True when a reroll had to accept a record already on screen (tiny shelf). */
+  repeat?: boolean
 }
 
 const MODE_META: Record<RecommendationMode, { hint: string }> = {
@@ -128,7 +130,7 @@ export function RecommendPage() {
       replaceCard(
         index,
         { album, reason: 'Logged — happy spinning!', days_since_played: 0 },
-        { justSpun: true },
+        { justSpun: true, repeat: false },
       )
     } catch (err) {
       if (id !== seq.current) return
@@ -160,7 +162,15 @@ export function RecommendPage() {
         picked = rec
         if (!others.has(rec.album.id)) break
       }
-      if (picked) replaceCard(index, picked, { justSpun: false })
+      // The accepted pick visibly duplicates a card already on screen (this slot
+      // included) → tell the user why the reroll repeated on a tiny shelf.
+      const onScreen = new Set(cards.map((c) => c.rec.album.id))
+      if (picked) {
+        replaceCard(index, picked, {
+          justSpun: false,
+          repeat: onScreen.has(picked.album.id),
+        })
+      }
     } catch (err) {
       if (id !== seq.current) return
       setError(err instanceof ApiError ? err.message : 'Could not re-roll this card.')
@@ -258,7 +268,7 @@ export function RecommendPage() {
       )}
 
       {cards.length > 0 ? (
-        <div className="rec-grid" data-testid="rec-grid">
+        <div className="rec-grid" data-testid="rec-grid" aria-live="polite">
           {cards.map((card, i) => (
             <article className="rec-card" key={i}>
               <Link to={`/album/${card.rec.album.id}`} className="rec-cover-link">
@@ -318,6 +328,12 @@ export function RecommendPage() {
                     {card.busy === 'reroll' ? 'Rolling…' : 'Show me another'}
                   </button>
                 </div>
+                {card.repeat && (
+                  <p className="rec-repeat">
+                    Tiny shelf — only a handful of records match, so rerolls fall back to
+                    repeats.
+                  </p>
+                )}
               </div>
             </article>
           ))}

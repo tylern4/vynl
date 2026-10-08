@@ -115,7 +115,11 @@ export function AddAlbumPage() {
           onChange={(e) => setQuery(e.target.value)}
           autoFocus
         />
-        {searching && <span className="muted search-hint">Searching…</span>}
+        {searching && (
+          <span className="muted search-hint" role="status">
+            Searching…
+          </span>
+        )}
       </div>
 
       {searchError && (
@@ -150,7 +154,7 @@ export function AddAlbumPage() {
       )}
 
       {results.length > 0 && (
-        <ul className="result-list">
+        <ul className="result-list" aria-live="polite">
           {results.map((result) => {
             const key = rowKey(result)
             const status = rows[key] ?? { kind: 'idle' }
@@ -172,9 +176,15 @@ export function AddAlbumPage() {
                       : ''}
                   </span>
                   {status.kind === 'error' && (
-                    <span className="result-error" role="alert">
-                      {status.message}
-                    </span>
+                    <>
+                      <span className="result-error" role="alert">
+                        {status.message}
+                      </span>
+                      <span className="result-hint">
+                        The music service may be briefly unavailable — check your
+                        connection and hit Retry, or try a different search.
+                      </span>
+                    </>
                   )}
                 </div>
                 <SourceBadge source={result.source} />

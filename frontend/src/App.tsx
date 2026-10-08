@@ -1,5 +1,5 @@
 import { Link, Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom'
-import { Dices, Disc3, Moon, Sun } from 'lucide-react'
+import { Dices, Disc3, Library, Moon, Plus, Search, Sun } from 'lucide-react'
 import { ProtectedRoute, useAuth } from './auth'
 import { useTheme } from './theme'
 import { LoginPage } from './pages/Login'
@@ -20,12 +20,16 @@ function AppShell() {
         <Link to="/" className="brand">
           <Disc3 size={22} /> vynl
         </Link>
-        <nav className="topnav">
+        <nav className="topnav" aria-label="Primary">
           <NavLink to="/" end>
-            Shelf
+            <Library size={15} aria-hidden /> Shelf
           </NavLink>
-          <NavLink to="/add">Add</NavLink>
-          <NavLink to="/find">Find</NavLink>
+          <NavLink to="/add">
+            <Plus size={15} aria-hidden /> Add
+          </NavLink>
+          <NavLink to="/find">
+            <Search size={15} aria-hidden /> Find
+          </NavLink>
           <NavLink to="/recommend">
             <Dices size={15} aria-hidden /> Recommend
           </NavLink>

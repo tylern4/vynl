@@ -17,8 +17,8 @@ the coordinator commits.
 | 4 | [Frontend foundation (scaffold, auth, theme)](docs/issues/004-frontend-foundation.md) | done | — | 1 | agent-frontend-1 |
 | 5 | [Shelf & detail UI](docs/issues/005-shelf-detail-ui.md) | done | 3, 4 | 3 | agent-shelf-5 |
 | 6 | [Recommendations UI](docs/issues/006-recommendations-ui.md) | done | 5 | 4 | agent-recommend-6 |
-| 7 | [Integration: compose, CI, README, smoke test](docs/issues/007-integration.md) | in progress | 3, 5, 6 | 5 | agent-integration-7 |
-| 8 | [Polish: responsive, empty/error states, dark mode](docs/issues/008-polish.md) | in progress | 5 | 4–5 | agent-polish-8 |
+| 7 | [Integration: compose, CI, README, smoke test](docs/issues/007-integration.md) | done | 3, 5, 6 | 5 | agent-integration-7 |
+| 8 | [Polish: responsive, empty/error states, dark mode](docs/issues/008-polish.md) | done | 5 | 4–5 | agent-polish-8 |
 | 9 | [Admin approval gap — pending accounts have no UI path](docs/issues/009-admin-approval-gap.md) | open | — | follow-up | — |
 
 Statuses: `open` → `in progress` → `done` (or `blocked` with a note).

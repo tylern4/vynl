@@ -193,6 +193,13 @@ describe('ShelfPage', () => {
     )
   })
 
+  it('shows skeleton cards while the shelf loads', () => {
+    mocks.api.listAlbums.mockReturnValue(new Promise(() => {}))
+    renderShelf()
+    expect(screen.getByTestId('shelf-skeleton')).toBeInTheDocument()
+    expect(screen.queryByTestId('shelf-grid')).not.toBeInTheDocument()
+  })
+
   it('surfaces load errors with a retry action', async () => {
     mocks.api.listAlbums.mockRejectedValue(new mocks.ApiError(500, 'Server exploded'))
     renderShelf()

@@ -13,10 +13,17 @@ const mocks = vi.hoisted(() => {
     getCoverUrl: vi.fn((id: number) => `/api/albums/${id}/cover`),
     getCoverBlob: vi.fn().mockResolvedValue(null),
   }
-  return { api }
+  class ApiError extends Error {
+    status: number
+    constructor(status: number, message: string) {
+      super(message)
+      this.status = status
+    }
+  }
+  return { api, ApiError }
 })
 
-vi.mock('../api', () => ({ api: mocks.api }))
+vi.mock('../api', () => ({ api: mocks.api, ApiError: mocks.ApiError }))
 
 const tags: Tag[] = [
   { id: 1, name: 'summer', album_count: 3 },
@@ -119,5 +126,20 @@ describe('FindPage', () => {
 
     await user.type(screen.getByLabelText('Search your library'), 'zzz')
     expect(await screen.findByText(/Nothing matched/)).toBeInTheDocument()
+  })
+
+  it('shows a section error and retries the same query', async () => {
+    const user = userEvent.setup()
+    mocks.api.searchTracks
+      .mockRejectedValueOnce(new mocks.ApiError(500, 'songs exploded'))
+      .mockResolvedValue([track])
+    renderFind()
+
+    await user.type(screen.getByLabelText('Search your library'), 'once')
+    expect(await screen.findByText(/Songs unavailable/)).toBeInTheDocument()
+    expect(screen.getByText(/songs exploded/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Retry songs' }))
+    expect(await screen.findByText('Once in a Lifetime')).toBeInTheDocument()
   })
 })

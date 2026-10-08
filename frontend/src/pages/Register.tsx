@@ -43,7 +43,7 @@ export function RegisterPage() {
             </h1>
             <p className="auth-sub">Account created — awaiting approval.</p>
           </div>
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem', margin: 0 }}>
+          <p className="auth-pending">
             Your account is pending approval by an admin. You&apos;ll be able to sign in once it&apos;s
             approved.
           </p>
@@ -102,7 +102,7 @@ export function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>At least 8 characters.</span>
+          <span className="field-note">At least 8 characters.</span>
         </div>
 
         <div className="field">
@@ -113,7 +113,7 @@ export function RegisterPage() {
             value={inviteCode}
             onChange={(e) => setInviteCode(e.target.value)}
           />
-          <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>
+          <span className="field-note">
             Optional — only needed to set up the very first account on this instance.
           </span>
         </div>
