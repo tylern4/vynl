@@ -361,3 +361,18 @@ shipped, decisions made, anything the next agent needs to know.
   reroll duplicate-guard UX on sub-6-album shelves (≤5 attempts then accepts a
   repeat — a "nothing else left" note could explain repeats), and auditing the
   new `.rec-*` styles for the 640 px breakpoints/dark mode.
+
+## 2026-10-08 — Admin access incident + dev-DB hygiene — coordinator
+
+- Owner could not log in: their registration (`nicholas.s.tyler.4@gmail.com`, id 5)
+  landed `role=user status=pending` because four smoke-test accounts registered
+  first (first-account-becomes-admin rule), and the frontend has no admin-approval
+  UI (scoped out of v1) — a pending account is a UI dead end.
+- Fix: promoted owner account to admin+active, deleted the 4 smoke accounts and their
+  albums/tags/plays via SQL. The wipe raced an in-flight agent which re-seeded
+  `shelf-demo@…` (id 6, 7 classic albums) for screenshot catalog — a final cleanup
+  pass after #7/#8 finishes removes ALL non-owner data from the dev DB.
+- Root cause logged as **issue #9** (admin approval gap): decide between building an
+  admin page or simplifying registration policy for a single-user shelf app.
+- Process lesson: agents doing live smoke checks should use a scratch DB
+  (`vynl_smoke`), not the owner's dev DB; note in future issue briefs.
