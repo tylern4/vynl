@@ -23,5 +23,6 @@ the coordinator commits.
 | 10 | [Color palette themes + settings menu](docs/issues/010-palette-themes.md) | in progress | 8 | feature | agent-palette-10 |
 | 11 | [Manual album entry + cover upload / camera](docs/issues/011-manual-album-entry.md) | open | 3, 5 (after 10) | feature | — |
 | 12 | [More music providers — iTunes (multi-country) + Discogs](docs/issues/012-more-music-providers.md) | open | 2, 3 (after 10, 11) | feature | — |
+| 13 | [Import preview — click a search result to see what will be imported](docs/issues/013-import-preview.md) | open | 3, 5 (after 10, before 12) | feature | — |
 
 Statuses: `open` → `in progress` → `done` (or `blocked` with a note).
