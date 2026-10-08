@@ -1,9 +1,9 @@
 # vynl
 
-A digital bookshelf for your vinyl records. Search **MusicBrainz** and **Deezer**
-to import albums, keep cover artwork and full tracklists, tag your collection,
-find songs by mood or vibe, and get recommendations for records you haven't spun
-in a while.
+A digital bookshelf for your vinyl records. Search **MusicBrainz**, **Deezer**,
+and **iTunes**, add **Discogs** with a personal access token, to import albums,
+keep cover artwork and full tracklists, tag your collection, find songs by mood
+or vibe, and get recommendations for records you haven't spun in a while.
 
 Built with the same stack and conventions as
 [baby-tracking-app](https://github.com/tylern4/baby-tracking-app): FastAPI +
@@ -22,15 +22,16 @@ frontend, everything behind one `docker compose up`.
 
 ## Features
 
-- **Import albums** by searching MusicBrainz and Deezer side by side — results
-  are merged and deduplicated, and the artwork is cached locally.
+- **Import albums** by searching MusicBrainz, Deezer, and iTunes side by side —
+  results are merged and deduplicated, and the artwork is cached locally. Add a
+  **Discogs** token to pull releases from Discogs too (see Configuration).
 - **Import preview** — click any search result to see exactly what importing it
   would create (cover, metadata, tracklist with durations, and which provider
   fed each part) before you commit, including a per-source tracklist comparison
-  when both providers offer one.
-- **Cover artwork and tracklists** — artwork from the Cover Art Archive (or
-  Deezer) is stored on a Docker volume, so it survives container recreation;
-  tracklists include song titles and lengths.
+  when more than one provider offers one.
+- **Cover artwork and tracklists** — artwork from the Cover Art Archive, Deezer,
+  iTunes, or Discogs is stored on a Docker volume, so it survives container
+  recreation; tracklists include song titles and lengths.
 - **Tags** — label records with moods, vibes, genres, or anything else, and
   filter the shelf by tag.
 - **Library search** — find albums or individual songs across your collection.
@@ -87,8 +88,9 @@ docker compose ps            # all three should be Up (healthy)
 curl http://localhost:8080/api/health   # {"status":"ok"}
 ```
 
-> Searches and imports call the **live** MusicBrainz, Deezer, and Cover Art
-> Archive APIs, so first-time setup needs outbound internet access.
+> Searches and imports call the **live** MusicBrainz, Deezer, iTunes, Discogs
+> (when configured), and Cover Art Archive APIs, so first-time setup needs
+> outbound internet access.
 
 ### Configuration
 
@@ -103,6 +105,8 @@ with a clear message if a required variable is missing.
 | `JWT_SECRET` | yes | — | used to sign auth tokens; **must be a long random string** — the backend refuses the placeholder values with a startup error |
 | `INVITE_CODE` | yes | — | registration code; anyone signing up must supply it |
 | `MUSICBRAINZ_CONTACT` | no | — | contact email sent with MusicBrainz requests (their policy requires a way to reach the operator) |
+| `ITUNES_COUNTRIES` | no | `US,JP,GB` | comma-separated iTunes storefronts to search/look up, in fallback order (no key required) |
+| `DISCOGS_TOKEN` | no | — | Discogs personal access token (Account → Developers). **Blank disables Discogs** — it's simply omitted from merged searches |
 
 ## Smoke test
 
@@ -140,7 +144,7 @@ the dev server directly or inside Docker:
 DATABASE_URL=postgresql+psycopg://vynl:vynl@localhost:5432/vynl \
 JWT_SECRET=dev INVITE_CODE=dev uvicorn src.main:app --reload --port 8001
 
-pytest          # 172 tests, uses a disposable <db>_test Postgres DB
+pytest          # 242 tests, uses a disposable <db>_test Postgres DB
 ```
 
 > The provider tests mock HTTP — no live network. `pytest` reuses the
@@ -154,7 +158,7 @@ Node ≥ 20 (CI uses 20):
 cd frontend
 npm ci
 npm run dev     # http://localhost:5173, proxies /api to :8000
-npm test        # Vitest + React Testing Library, 92 tests
+npm test        # Vitest + React Testing Library, 142 tests
 npm run build   # tsc -b && vite build
 ```
 
@@ -200,10 +204,11 @@ Smoke is intentionally **not** in CI (live provider calls; see above).
 
 - **Slow or empty searches, or a 502 on import.** MusicBrainz enforces a
   **max 1 request/second** rate limit and requires a descriptive `User-Agent`;
-  vynl throttles requests to comply, so merged searches can take a beat. If
-  Deezer is down, results still come back (with an `X-Search-Degraded: deezer`
-  header); if both providers fail, the search returns 502. A dedicated public
-  IP can help if you're behind NAT that MusicBrainz throttles.
+  vynl throttles requests to comply, so merged searches can take a beat. If one
+  or more providers are down, results still come back (with the failed names in
+  an `X-Search-Degraded: deezer,itunes` header); only when **every** enabled
+  provider fails does the search return 502. A dedicated public IP can help if
+  you're behind NAT that MusicBrainz throttles.
 
 - **Missing artwork on some albums.** Imported albums without cover art set
   `cover_path` to null; the UI falls back to the provider's remote artwork URL,

@@ -68,7 +68,7 @@ class SearchResultOut(BaseModel):
     deliberately not part of the wire contract.
     """
 
-    source: str  # "deezer" | "musicbrainz"
+    source: str  # "deezer" | "musicbrainz" | "itunes" | "discogs"
     external_id: str
     title: str
     artist: str
@@ -79,7 +79,7 @@ class SearchResultOut(BaseModel):
 
 
 class AlbumImportRequest(BaseModel):
-    source: Literal["deezer", "musicbrainz"]
+    source: Literal["deezer", "musicbrainz", "itunes", "discogs"]
     external_id: str = Field(min_length=1, max_length=64)
 
 
@@ -149,7 +149,7 @@ class AlbumSourceBreakdown(BaseModel):
 
     Any field may be ``None`` when that part has no source (e.g. no artwork
     anywhere). Values are provider names: ``"musicbrainz"``, ``"deezer"``,
-    ``"cover_art_archive"``.
+    ``"itunes"``, ``"discogs"``, ``"cover_art_archive"``.
     """
 
     metadata_source: str | None = None
@@ -196,7 +196,7 @@ class AlbumOut(BaseModel):
     year: int | None = None
     label: str | None = None
     country: str | None = None
-    source: str  # "deezer" | "musicbrainz"
+    source: str  # "deezer" | "musicbrainz" | "itunes" | "discogs" | "manual"
     external_id: str
     cover_url: str | None = None
     track_count: int

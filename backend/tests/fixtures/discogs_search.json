@@ -1,0 +1,40 @@
+{
+  "pagination": {
+    "per_page": 10,
+    "items": 2,
+    "pages": 1,
+    "urls": {}
+  },
+  "results": [
+    {
+      "country": "Europe",
+      "year": 1980,
+      "format": ["Vinyl", "LP", "Album"],
+      "label": ["Sire"],
+      "type": "release",
+      "genre": ["Rock"],
+      "style": ["New Wave", "Art Rock"],
+      "id": 249504,
+      "barcode": ["075992609511"],
+      "thumb": "https://img.discogs.com/XYZ/remain-150.jpg",
+      "cover_image": "https://img.discogs.com/XYZ/remain.jpg",
+      "title": "Talking Heads – Remain in Light",
+      "uri": "https://www.discogs.com/release/249504-Talking-Heads-Remain-In-Light",
+      "format_quantity": 2
+    },
+    {
+      "country": "France",
+      "year": 2001,
+      "format": ["CD", "Album"],
+      "label": ["Virgin"],
+      "type": "release",
+      "genre": ["Electronic"],
+      "style": ["House", "Disco"],
+      "id": 249505,
+      "thumb": "https://img.discogs.com/XYZ/discovery-150.jpg",
+      "cover_image": "https://img.discogs.com/XYZ/spacer.gif",
+      "title": "Daft Punk – Discovery",
+      "uri": "https://www.discogs.com/release/249505-Daft-Punk-Discovery"
+    }
+  ]
+}

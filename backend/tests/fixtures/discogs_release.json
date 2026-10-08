@@ -1,0 +1,63 @@
+{
+  "id": 249504,
+  "status": "Accepted",
+  "year": 1980,
+  "title": "Remain in Light",
+  "resource_url": "https://api.discogs.com/releases/249504",
+  "uri": "https://www.discogs.com/release/249504-Talking-Heads-Remain-In-Light",
+  "artists": [
+    {
+      "name": "Talking Heads",
+      "anv": "Talking Heads",
+      "join": "",
+      "role": "",
+      "tracks": ""
+    }
+  ],
+  "labels": [
+    {
+      "name": "Sire",
+      "catno": "9 60951-1",
+      "entity_type": "1"
+    }
+  ],
+  "country": "Europe",
+  "genres": ["Rock"],
+  "styles": ["New Wave", "Art Rock"],
+  "formats": [
+    {
+      "name": "Vinyl",
+      "qty": "2",
+      "text": "",
+      "descriptions": ["LP", "Album"]
+    }
+  ],
+  "tracklist": [
+    { "position": "A1", "title": "Born Under Punches (The Heat Goes On)", "duration": "5:49" },
+    { "position": "A2", "title": "Crosseyed and Painless", "duration": "4:45" },
+    { "position": "B1", "title": "Once in a Lifetime", "duration": "4:19" },
+    { "position": "B2", "title": "Houses in Motion", "duration": "4:30" },
+    { "position": "B3", "title": "Seen and Not Seen", "duration": "3:25" },
+    { "position": "C1", "title": "The Great Curve", "duration": "5:36" },
+    { "position": "C2", "title": "Listening Wind", "duration": "4:42" },
+    { "position": "D1", "title": "The Overload", "duration": "6:00" },
+    { "position": "D2", "title": "Drugs", "duration": null }
+  ],
+  "images": [
+    {
+      "height": 150,
+      "width": 150,
+      "type": "secondary",
+      "uri150": "https://img.discogs.com/XYZ/remain-150.jpg",
+      "uri": "https://img.discogs.com/XYZ/remain-small.jpg"
+    },
+    {
+      "height": 1200,
+      "width": 1200,
+      "type": "primary",
+      "uri150": "https://img.discogs.com/XYZ/remain-150.jpg",
+      "uri": "https://img.discogs.com/XYZ/remain-full.jpg"
+    }
+  ],
+  "estimated_weight": 230
+}

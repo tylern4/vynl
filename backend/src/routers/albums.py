@@ -205,6 +205,14 @@ def import_album(
     if existing is not None:
         raise _conflict(existing)
 
+    # Issue #12: iTunes/Discogs have no DB columns; their additive ids ride in
+    # the metadata JSONB (kept next to the provider metadata, never on the wire).
+    metadata = dict(imported.metadata or {})
+    if imported.itunes_id is not None:
+        metadata["itunes_id"] = imported.itunes_id
+    if imported.discogs_id is not None:
+        metadata["discogs_id"] = imported.discogs_id
+
     album = Album(
         user_id=current_user.id,
         title=imported.title,
@@ -217,7 +225,7 @@ def import_album(
         musicbrainz_release_group_id=imported.musicbrainz_release_group_id,
         deezer_id=imported.deezer_id,
         cover_url=imported.cover_url,
-        metadata_=dict(imported.metadata or {}),
+        metadata_=metadata,
         track_count=len(imported.tracks),
     )
     db.add(album)

@@ -101,9 +101,10 @@ export function AddAlbumPage() {
       <div className="page-head">
         <h1>Add an album</h1>
         <p className="muted">
-          Search results come from{' '}
-          <strong>MusicBrainz</strong> and <strong>Deezer</strong> — metadata and
-          artwork © their respective providers.
+          Search results come from <strong>MusicBrainz</strong>,{' '}
+          <strong>Deezer</strong>, <strong>iTunes</strong>, and{' '}
+          <strong>Discogs</strong> — metadata and artwork © their respective
+          providers. Discogs needs a personal access token to appear in results.
         </p>
       </div>
 
@@ -142,8 +143,8 @@ export function AddAlbumPage() {
           <Disc3 size={36} aria-hidden />
           <h2>Find your next record</h2>
           <p className="muted">
-            Type a title or artist above — we’ll search MusicBrainz and Deezer for
-            matches.
+            Type a title or artist above — we’ll search MusicBrainz, Deezer,
+            iTunes, and Discogs for matches.
           </p>
         </div>
       )}

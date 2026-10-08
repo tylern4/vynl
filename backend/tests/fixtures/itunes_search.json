@@ -1,0 +1,27 @@
+{
+  "resultCount": 1,
+  "results": [
+    {
+      "wrapperType": "collection",
+      "collectionType": "Album",
+      "artistId": 42338,
+      "collectionId": 1440814958,
+      "amgArtistId": 5717,
+      "artistName": "Talking Heads",
+      "collectionName": "Remain in Light",
+      "collectionCensoredName": "Remain in Light",
+      "artistViewUrl": "https://itunes.apple.com/us/artist/talking-heads/id42338",
+      "collectionViewUrl": "https://itunes.apple.com/us/album/remain-in-light/id1440814958",
+      "artworkUrl60": "https://is4-ssl.mzstatic.com/image/thumb/Music114/v4/69/ab/cd/69abcdde-0000-0000-0000-000000000000/60x60bb.jpg",
+      "artworkUrl100": "https://is4-ssl.mzstatic.com/image/thumb/Music114/v4/69/ab/cd/69abcdde-0000-0000-0000-000000000000/100x100bb.jpg",
+      "collectionPrice": 9.99,
+      "collectionExplicitness": "notExplicit",
+      "trackCount": 8,
+      "copyright": "℗ 1980 Sire Records",
+      "country": "USA",
+      "currency": "USD",
+      "releaseDate": "1980-10-08T07:00:00Z",
+      "primaryGenreName": "Rock"
+    }
+  ]
+}

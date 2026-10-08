@@ -209,7 +209,7 @@ reference: bcrypt hashes, HS256 tokens, `HTTPBearer`). All endpoints except
 ```jsonc
 // SearchResult
 {
-  "source": "deezer",              // "deezer" | "musicbrainz"
+  "source": "deezer",              // "deezer" | "musicbrainz" | "itunes" | "discogs"
   "external_id": "302127",         // Deezer album id or MusicBrainz release-group MBID
   "title": "Remain in Light",
   "artist": "Talking Heads",
@@ -220,12 +220,16 @@ reference: bcrypt hashes, HS256 tokens, `HTTPBearer`). All endpoints except
 }
 ```
 
-Results from both providers are fetched, normalized, and **deduplicated** by
-`(lower(artist), lower(title), year ± 1)` — merged rows prefer Deezer's
-`cover_url`/`track_count` and MusicBrainz's `year`/`label` when both exist (merged
-row keeps both ids in a `sources` detail; see §6). Endpoint tolerates one provider
-being down: returns the other's results with a `degraded` flag in headers
-(`X-Search-Degraded: deezer`) — response body stays a plain array.
+Results from every enabled provider are fetched, normalized, and
+**deduplicated** by `(lower(artist), lower(title), year ± 1)` — merged rows prefer
+Deezer's `cover_url`/`track_count` and MusicBrainz's `year`/`label` when both
+exist, absorbing a matching iTunes (then Discogs) row without reordering the
+Deezer/MusicBrainz pairing (merged row keeps every id in a `sources` detail; see
+§6). Endpoint tolerates one provider being down: returns the others' results with
+the failed provider names in headers (`X-Search-Degraded: deezer,itunes`) —
+response body stays a plain array. Discogs is **omitted entirely** unless a
+token is configured (§6), so it never appears as degraded on an unconfigured
+install.
 
 ### Import & collection
 
@@ -384,7 +388,7 @@ exist. **`random`:** uniform sample. Deterministic tests seed via dependency-inj
 
 ---
 
-## 6. Music provider strategy (MusicBrainz + Deezer + Cover Art Archive)
+## 6. Music provider strategy (MusicBrainz + Deezer + iTunes + Discogs + Cover Art Archive)
 
 All provider code lives in `backend/src/providers/` behind one public interface so
 routers never talk HTTP directly:
@@ -413,7 +417,7 @@ behavior is unchanged (it still reads only `.tracks`).
   → track `length` (ms → seconds), label, country, year.
 - **Policy:** custom User-Agent `vynl/0.1.0 ({MUSICBRAINZ_CONTACT})`, **max 1
   request/second** — a module-level lock + spacing guard enforces this; search hits
-  both providers concurrently but the MB leg waits its turn.
+  all providers concurrently but the MB leg waits its turn.
 
 ### Deezer
 
@@ -422,6 +426,39 @@ behavior is unchanged (it still reads only `.tracks`).
   `duration` (seconds already), `cover_xl` artwork, label, release date.
 - Deezer responses are fast and rich; used as the preferred tracklist source when a
   merged result has both ids.
+
+### iTunes (issue #12)
+
+- Search: `GET https://itunes.apple.com/search?term={q}&entity=album&limit=N&country={CC}`
+  → `results[]` (`collectionId`, `collectionName`, `artistName`, `releaseDate`,
+  `trackCount`, `artworkUrl100`, `country`). **No key, always on.**
+- Import: `GET https://itunes.apple.com/lookup?id={collectionId}&entity=song&country={CC}`
+  → the collection row + one row per song (`trackNumber`, `discNumber`,
+  `trackTimeMillis`, `primaryGenreName`).
+- **Multi-country:** search/lookup iterate `ITUNES_COUNTRIES` (default `US,JP,GB`);
+  the first storefront that has the id supplies the album. Per-storefront failures
+  **degrade** (try the next); only "every storefront failed" raises.
+- **Rate limits:** no documented cap; vynl spaces storefront requests by a
+  module-level **0.3 s floor** and uses a **20 s timeout**.
+- Artwork upgrade: `…/100x100bb.jpg` → `…/600x600bb.jpg`. Tracklist sorted by
+  `(discNumber, trackNumber)` for multi-disc releases.
+
+### Discogs (issue #12)
+
+- **Token-gated:** disabled when `DISCOGS_TOKEN` is blank — direct calls raise
+  `ProviderError("Discogs is not configured")` and merged search omits it, so the
+  app is fully functional without a token.
+- Search: `GET https://api.discogs.com/database/search?q={q}&type=release&per_page=N&token=…`
+  → `results[]`, `per_page` clamped to ≤ 100. Titles are usually
+  `"Artist – Title"` (en-dash); split on the first spaced dash.
+- Import: `GET https://api.discogs.com/releases/{id}?token=…` → `tracklist[]`
+  (`duration` `"MM:SS"`/`"H:MM:SS"` → seconds, null-safe), `labels`, `genres`,
+  `styles`, `formats`, `images` (prefer a ≥ 300 px full image; `spacer.gif`/
+  `duck.gif` placeholder art counts as none).
+- **Rate limits:** authenticated ~60 req/min → a module-level **1 req/s floor**
+  plus retry with exponential backoff on HTTP 429 or
+  `X-Discogs-Ratelimit-Remaining: 0`. Requests send
+  `User-Agent: vynl/0.1.0 (+https://github.com/tylern4/vynl)`.
 
 ### Cover Art Archive (artwork)
 
@@ -434,31 +471,38 @@ behavior is unchanged (it still reads only `.tracks`).
 
 ### Merge / dedupe rules (search)
 
-1. Query both providers (concurrently; failures degrade gracefully, §5).
+1. Query every enabled provider concurrently; failures degrade gracefully (§5).
 2. Normalize: trim, lowercase, strip featuring suffixes (`"Artist feat. X"` →
    `"Artist"`) for **comparison only**.
-3. Pair results where `artist`+`title` match (case-insensitive) and years are within
-   ±1 (or one side has no year). Merged row: `source="musicbrainz"`,
-   `external_id=` the MB release-group id, but carries `deezer_id` too so import can
-   pull the Deezer tracklist.
-4. Unmatched results pass through as-is; stable order = Deezer relevance first, then
-   MusicBrainz.
+3. Pair Deezer + MusicBrainz results where `artist`+`title` match (case-insensitive)
+   and years are within ±1 (or one side has no year). Merged row:
+   `source="musicbrainz"`, `external_id=` the MB release-group id, but carries
+   `deezer_id` too so import can pull the Deezer tracklist.
+4. Matching iTunes rows are then **absorbed** into an existing pair (adding
+   `itunes_id`, filling year/track_count/cover only when still unknown), then
+   matching Discogs rows likewise; a row that matches nothing is appended in
+   provider order. This keeps the Deezer-first / MusicBrainz-canonical ordering
+   byte-identical whether or not iTunes/Discogs contribute.
 
 ### Import rules
 
-1. If both ids known → fetch MusicBrainz release (canonical title/artist/label/year)
-   **and** Deezer album (tracklist + durations + cover); fall back to whichever
-   source the result came from if the other errors.
-2. Artwork: Deezer `cover_xl` → CAA → none.
+1. Metadata is canonical from MusicBrainz when its twin is known, else the
+   requested source's own album, else the first provider that answered. Tracklist
+   and artwork preference: **Deezer → iTunes → Discogs → MusicBrainz** (Cover Art
+   Archive artwork is consulted last).
+2. Artwork: Deezer `cover_xl` → iTunes 600 px → Discogs ≥ 300 px full image → CAA
+   → none.
 3. Duplicate check: `(user_id, source, external_id)` unique constraint **and**
    soft-dedupe on `(user_id, lower(title), lower(artist))` → 409 with the existing
    album id in the detail.
 4. The wire body carries a single `external_id` (§5), so "both ids known" means
    `import_album` resolved the counterpart id itself: it searches the *other*
-   provider by normalized artist + title (year ± 1) and adopts a confident
+   providers by normalized artist + title (year ± 1) and adopts a confident
    match ("twin discovery"). Discovery failure or a 404 on the counterpart
    degrades to a single-source import — never an error (issue #2
-   clarification).
+   clarification). iTunes and Discogs twins are discovered the same way; a
+   Discogs import also records its `styles`/`formats` in the album's `metadata`
+   JSONB, alongside the additive `itunes_id`/`discogs_id` (no new DB columns).
 
 ---
 
@@ -471,7 +515,7 @@ Routes (react-router, `ProtectedRoute` wrapper same as reference):
 | `/login`, `/register` | auth pages | invite-code registration, identical flow to reference |
 | `/` | `ShelfPage` | responsive cover grid ("the shelf"); instant filter box; tag chips sidebar/dropdown; sort selector; favorite toggle |
 | `/album/:id` | `AlbumDetailPage` | large cover, metadata, **tracklist table** (position, title, length m:ss), tag editor (add/remove chips), "I spun this" play button + play history, edit note/favorite, remove from shelf |
-| `/add` | `AddAlbumPage` | search box → merged results from `/api/search/albums` → one-click import with progress state; shows which source; already-added state; **clicking a result title opens the import-preview modal** (`POST /api/albums/preview`) showing the cover, full tracklist (with a per-source tracklist toggle when both providers have one), and which provider fed each part before you commit (issue #13); a "Can't find it? Enter the album manually" secondary path links to `/add/manual` |
+| `/add` | `AddAlbumPage` | search box → merged results from `/api/search/albums` → one-click import with progress state; shows which source; already-added state; **clicking a result title opens the import-preview modal** (`POST /api/albums/preview`) showing the cover, full tracklist (with a per-source tracklist toggle when more than one provider offers one), and which provider fed each part before you commit (issue #13); a "Can't find it? Enter the album manually" secondary path links to `/add/manual` |
 | `/add/manual` | `ManualAlbumPage` | manual entry form (title*/artist*/year/label/country/note) with a **dynamic tracklist editor** (per-row title + duration, entered as `m:ss` or plain seconds, add/remove rows); submit → `POST /albums/manual` → upload the picked cover → navigate to `/album/{id}`; a failed cover upload keeps the created album and offers inline retry (issue #11) |
 | `/find` | `FindPage` | library-wide song/album/tag search across `/api/tracks` + `/api/albums`; results show song → its album; click through to detail |
 | `/recommend` | `RecommendPage` | mode toggle (`dusty` / `random`), optional tag filter, big "Spin" button → recommendation card with reason + "Spun it" action |

@@ -17,6 +17,8 @@ from .base import NotFound, ProviderError
 DEEZER_BASE = "https://api.deezer.com"
 MUSICBRAINZ_BASE = "https://musicbrainz.org/ws/2"
 COVERART_BASE = "https://coverartarchive.org"
+ITUNES_BASE = "https://itunes.apple.com"
+DISCOGS_BASE = "https://api.discogs.com"
 
 DEFAULT_TIMEOUT = 15.0
 
@@ -51,17 +53,22 @@ def get_json(
     params: dict | None = None,
     headers: dict | None = None,
     not_found_statuses: tuple[int, ...] = (404,),
+    timeout: float | None = None,
 ) -> Any:
     """GET ``url`` and return the decoded JSON body.
 
     Maps failures onto the provider protocol: transport errors and non-OK
     statuses become :class:`ProviderError` (reason includes status + a body
     snippet); 404 — or any status in ``not_found_statuses`` — becomes
-    :class:`NotFound`.
+    :class:`NotFound`. ``timeout`` overrides the shared client's default for
+    this request only (issue #12: iTunes wants 20 s).
     """
     client = get_client()
     try:
-        response = client.get(url, params=params, headers=headers)
+        request_kwargs: dict = {}
+        if timeout is not None:
+            request_kwargs["timeout"] = timeout
+        response = client.get(url, params=params, headers=headers, **request_kwargs)
     except httpx.HTTPError as exc:
         raise ProviderError(f"request to {response_host(url)} failed: {exc}") from exc
     if response.status_code in not_found_statuses:

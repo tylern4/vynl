@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     invite_code: str = "change-me"
     musicbrainz_contact: str = "you@example.com"
     covers_dir: str = "covers"
+    # Discogs personal access token (account → Developers → Generate token).
+    # Blank = the Discogs provider is disabled (issue #12).
+    discogs_token: str = ""
+    # iTunes storefronts queried per search, comma-separated; order = query
+    # order. Override for e.g. "US,JP,GB,DE,FR" (issue #12).
+    itunes_countries: str = "US,JP,GB"
 
 
 settings = Settings()

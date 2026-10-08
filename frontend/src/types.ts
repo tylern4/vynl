@@ -25,7 +25,12 @@ export interface LoginResult {
   user: User
 }
 
-export type AlbumSource = 'deezer' | 'musicbrainz' | 'manual'
+export type AlbumSource =
+  | 'deezer'
+  | 'musicbrainz'
+  | 'itunes'
+  | 'discogs'
+  | 'manual'
 
 export type AlbumSort = 'added' | 'title' | 'artist' | 'year' | 'played'
 

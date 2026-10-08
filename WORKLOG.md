@@ -713,3 +713,50 @@ shipped, decisions made, anything the next agent needs to know.
   `store_cover_bytes`, replace-deletes-old-ext logic all untouched.
 - Verification pending: backend pytest + `npm test` + `npm run build` re-run at
   commit time.
+
+## 2026-10-08 — Issue #12 iTunes + Discogs providers — agent-providers-12
+
+- Shipped two new provider modules behind the existing interface:
+  - `providers/itunes.py` — no key, always on. Search/lookup iterate
+    `ITUNES_COUNTRIES` (default `US,JP,GB`); 0.3 s spacing floor, 20 s timeout,
+    per-storefront degrade (empty result ≠ error, only all-storefront failure
+    raises); artwork `100x100bb` → `600x600bb`; lookup sorts songs by
+    `(discNumber, trackNumber)` for multi-disc releases.
+  - `providers/discogs.py` — token-gated on `DISCOGS_TOKEN` (blank ⇒ disabled:
+    direct calls raise `ProviderError("Discogs is not configured")`, merged
+    search omits it). `"Artist – Title"` parse; `MM:SS`/`H:MM:SS` → seconds
+    (null-safe); `spacer.gif`/`duck.gif` → no art; prefer ≥ 300 px image; 1 req/s
+    floor + retry/backoff on 429 or `X-Discogs-Ratelimit-Remaining: 0`; UA
+    `vynl/0.1.0 (+https://github.com/tylern4/vynl)`.
+- `config.py` + `.env.example`: `discogs_token=""`, `itunes_countries="US,JP,GB"`.
+- Merge generalized (`_merge.py`): `merge_results(rows: Mapping[str, list], limit)`
+  keeps the original Deezer⊕MusicBrainz phase 1 byte-identical; phase 2 absorbs a
+  matching iTunes row, then a matching Discogs row, into emitted rows (adds ids,
+  fills year/track_count/cover only when still null — Deezer→iTunes→Discogs→MB)
+  and appends unmatched rows in provider order. `merge_pair` carries all four
+  ids; new `absorb_pair`; `PROVIDER_ORDER` documents the fill preference.
+- `providers/__init__.py`: 4-provider concurrent fan-out (`_enabled_providers()`
+  drops Discogs without a token); all-failed error only when every *enabled*
+  provider fails. Import dispatch for itunes/discogs; refactored
+  `_resolve_musicbrainz_twin` (+ `_find_deezer_twin`) so all four sources share
+  twin discovery. `_assemble` preference: metadata MB → requested source → first
+  available; tracklist/artwork Deezer → iTunes → Discogs → MusicBrainz (CAA
+  last); Discogs styles/formats recorded in `metadata`.
+- Schemas/router: `AlbumImportRequest.source` Literal now
+  `deezer|musicbrainz|itunes|discogs` (import + preview). No DB migration —
+  `itunes_id`/`discogs_id` persist in the album `metadata` JSONB; the wire
+  `SearchResultOut`/`AlbumOut` deliberately don't expose them.
+- Frontend: `types.ts` `AlbumSource` += `'itunes' | 'discogs'`; `SourceBadge`
+  labels; `AddAlbumPage` attribution + empty state name all providers and note
+  the Discogs token.
+- Docs: PLAN §5/§6 (new providers, limits, token gating, preference order,
+  degraded header) + README features/config table + `.env.example`.
+- Tests: backend **242 passed** (was 209; +iTunes/Discogs provider, 4-provider
+  merge, and preview/import endpoint tests), frontend **142 passed** (19 files),
+  `npm run build` ✓. All provider HTTP is mocked — no live calls.
+- Deviations: frontend `SearchResult` not extended with optional ids (nothing
+  consumed them); `AlbumPreviewModal.sourceLabel()` left as-is (falls back to the
+  raw provider name for iTunes/Discogs — cosmetic, out of #12 scope); iTunes
+  `country` surfaced verbatim from the payload (e.g. `"USA"`, not normalized to
+  the storefront code); Discogs search reads the real `label` (list of strings)
+  key while also tolerating release-payload `labels` (list of dicts).

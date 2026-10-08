@@ -3,6 +3,8 @@ import type { AlbumSource } from '../types'
 const LABELS: Record<AlbumSource, string> = {
   deezer: 'Deezer',
   musicbrainz: 'MusicBrainz',
+  itunes: 'iTunes',
+  discogs: 'Discogs',
   manual: 'Manual',
 }
 

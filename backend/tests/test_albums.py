@@ -619,6 +619,94 @@ def test_preview_does_not_409_when_already_on_shelf(
     assert res.json()["title"] == "Remain in Light"
 
 
+# --- import: iTunes / Discogs additive ids (issue #12) -----------------------
+
+
+def test_preview_accepts_itunes_and_discogs_sources(client, headers, mock_import):
+    for source, external_id in (("itunes", "1440814958"), ("discogs", "249504")):
+        mock_import.install(
+            factory=lambda s, e_id: provider_album(
+                source=s,
+                external_id=e_id,
+                metadata_source=s,
+                tracklist_source=s,
+                artwork_source=s,
+                tracklists_by_source={s: [TrackInput(1, "Only Track", 222)]},
+            )
+        )
+        res = client.post(
+            "/api/albums/preview",
+            json=_preview_payload(source, external_id),
+            headers=headers,
+        )
+        assert res.status_code == 200, res.text
+        body = res.json()
+        assert body["source"] == source
+        assert body["external_id"] == external_id
+        assert body["source_breakdown"]["metadata_source"] == source
+        assert list(body["tracklists_by_source"]) == [source]
+    assert mock_import.calls == [("itunes", "1440814958"), ("discogs", "249504")]
+
+
+def test_import_itunes_persists_itunes_id_in_metadata(
+    client, headers, db_session, mock_import, mock_artwork
+):
+    mock_import.install(
+        factory=lambda s, e_id: provider_album(
+            source=s, external_id=e_id, itunes_id=e_id
+        )
+    )
+    mock_artwork.install()
+    res = client.post(
+        "/api/albums/import",
+        json={"source": "itunes", "external_id": "1440814958"},
+        headers=headers,
+    )
+    assert res.status_code == 201, res.text
+    body = res.json()
+    assert body["source"] == "itunes"
+    album = db_session.get(Album, body["id"])
+    assert album.metadata_["itunes_id"] == "1440814958"
+    assert "discogs_id" not in album.metadata_
+    assert "itunes_id" not in body  # additive ids stay off the wire
+
+
+def test_import_discogs_persists_discogs_id_in_metadata(
+    client, headers, db_session, mock_import, mock_artwork
+):
+    mock_import.install(
+        factory=lambda s, e_id: provider_album(
+            source=s, external_id=e_id, discogs_id=e_id
+        )
+    )
+    mock_artwork.install()
+    res = client.post(
+        "/api/albums/import",
+        json={"source": "discogs", "external_id": "249504"},
+        headers=headers,
+    )
+    assert res.status_code == 201, res.text
+    album = db_session.get(Album, res.json()["id"])
+    assert album.metadata_["discogs_id"] == "249504"
+    assert "itunes_id" not in album.metadata_
+
+
+def test_import_legacy_source_omits_new_provider_ids(
+    client, headers, db_session, mock_import, mock_artwork
+):
+    mock_import.install()  # default provider_album has both new ids as None
+    mock_artwork.install()
+    res = client.post(
+        "/api/albums/import",
+        json={"source": "deezer", "external_id": "302127"},
+        headers=headers,
+    )
+    assert res.status_code == 201, res.text
+    album = db_session.get(Album, res.json()["id"])
+    assert "itunes_id" not in album.metadata_
+    assert "discogs_id" not in album.metadata_
+
+
 # --- list --------------------------------------------------------------------
 
 

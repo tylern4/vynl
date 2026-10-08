@@ -23,8 +23,9 @@ class NotFound(ProviderError):
 class SearchResult:
     """One album as returned by external search, normalized across providers."""
 
-    source: str  # "deezer" | "musicbrainz"
-    external_id: str  # Deezer album id or MusicBrainz release-group MBID
+    source: str  # "deezer" | "musicbrainz" | "itunes" | "discogs"
+    external_id: str  # Deezer album id, MusicBrainz release-group MBID, iTunes
+    # collection id, or Discogs release id
     title: str
     artist: str
     year: int | None = None
@@ -34,6 +35,10 @@ class SearchResult:
     # Populated on merged rows so import can pull metadata from both sources.
     deezer_id: int | None = None
     musicbrainz_release_group_id: str | None = None
+    # Issue #12 (additive): ids for the newer sources, set on their own rows
+    # and collected onto merged rows.
+    itunes_id: str | None = None
+    discogs_id: str | None = None
 
 
 @dataclass
@@ -58,6 +63,8 @@ class ImportedAlbum:
     country: str | None = None
     musicbrainz_release_group_id: str | None = None
     deezer_id: int | None = None
+    itunes_id: str | None = None
+    discogs_id: str | None = None
     cover_url: str | None = None
     metadata: dict = field(default_factory=dict)
     tracks: list[TrackInput] = field(default_factory=list)

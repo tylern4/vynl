@@ -114,7 +114,11 @@ describe('AddAlbumPage', () => {
     expect(screen.getByText(/Search results come from/)).toBeInTheDocument()
     expect(screen.getByText('MusicBrainz')).toBeInTheDocument()
     expect(screen.getByText('Deezer')).toBeInTheDocument()
+    expect(screen.getByText('iTunes')).toBeInTheDocument()
+    expect(screen.getByText('Discogs')).toBeInTheDocument()
+    expect(screen.getByText(/needs a personal access token/i)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Find your next record' })).toBeInTheDocument()
+    expect(screen.getByText(/MusicBrainz, Deezer,\s+iTunes, and Discogs/)).toBeInTheDocument()
   })
 
   it('links to the manual entry page for hand-typed albums', () => {

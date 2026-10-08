@@ -1,7 +1,7 @@
 # #12: More music providers — iTunes (multi-country) + Discogs
 
-- **Status:** open
-- **Assignee:** unassigned
+- **Status:** done
+- **Assignee:** agent-providers-12
 - **Labels:** backend, features
 - **Depends on:** #2 (provider architecture), #3 (search/import contract); runs after #10/#11 land
 - **Wave:** follow-up feature
@@ -96,6 +96,30 @@ import system; the frontend gains source badges and attribution only.
   and optional Discogs token.
 - `.env.example` entries.
 
+## Acceptance
+
+- [x] iTunes provider: search + lookup per storefront (`ITUNES_COUNTRIES`, default
+  `US,JP,GB`), no key, always on; 0.3 s spacing, 20 s timeout, per-storefront
+  degrade (only all-failed raises); artwork `100x100bb` → `600x600bb`; multi-disc
+  tracklist sorted by `(discNumber, trackNumber)`; additive `itunes_id`.
+- [x] Discogs provider: token-gated (`DISCOGS_TOKEN` blank → disabled; direct
+  calls raise `ProviderError("Discogs is not configured")`, merged search omits
+  it); `"Artist – Title"` parse; `MM:SS`/`H:MM:SS` → seconds (null-safe);
+  `spacer.gif`/`duck.gif` → no art; ≥ 300 px image preferred; 1 req/s floor +
+  429 / `X-Discogs-Ratelimit-Remaining: 0` backoff; UA
+  `vynl/0.1.0 (+https://github.com/tylern4/vynl)`; additive `discogs_id`.
+- [x] Merge fan-out across all enabled providers with per-provider degrade;
+  Deezer↔MusicBrainz ordering preserved while iTunes/Discogs are
+  absorbed/appended; `X-Search-Degraded` may name `itunes`/`discogs`.
+- [x] Import + preview accept `source` `deezer|musicbrainz|itunes|discogs`;
+  tracklist/artwork preference Deezer → iTunes → Discogs → MusicBrainz, MB
+  canonical metadata when its twin is known. Additive ids persisted in the album
+  `metadata` JSONB (no DB migration); `discogs_styles`/`discogs_formats` recorded.
+- [x] Frontend: `AlbumSource` + `SourceBadge` gain iTunes/Discogs; `AddAlbumPage`
+  attribution + empty state name all providers and note the Discogs token.
+- [x] Tests green: backend pytest, `npm test`, `npm run build`.
+- [x] Docs: PLAN §5/§6, README features + config table, `.env.example`.
+
 ## Notes
 
 - **Discogs token** is user-supplied (`/settings` remains out of scope): `.env.example`
@@ -105,3 +129,30 @@ import system; the frontend gains source badges and attribution only.
   races the DB, re-run at the end.
 - Coordinate with #11’s manual-entry change if both edit frontend (SourceBadge is the
   only shared file — #11 adds a `manual` variant; prefer additive edits).
+
+## Outcome (agent-providers-12)
+
+- **Merged-search ordering is preserved.** Phase 1 keeps the original
+  Deezer↔MusicBrainz pairing (Deezer relevance first, MB-canonical merged rows);
+  phase 2 absorbs a matching iTunes row, then a matching Discogs row, into those
+  rows (adding the additive id, and filling year/track_count/cover only when still
+  `None`), then appends unmatched rows. Existing searches are therefore
+  byte-for-byte identical when iTunes/Discogs don't contribute.
+- **Canonical metadata** = MusicBrainz when its twin is known, else the requested
+  source's own album, else the first provider that answered. Tracklist/artwork
+  preference = Deezer → iTunes → Discogs → MusicBrainz (CAA consulted last).
+- **iTunes `country`** is surfaced verbatim from the storefront payload (uppercased
+  as-is, e.g. `"USA"`), not normalized to the storefront code.
+- **No DB migration.** `itunes_id`/`discogs_id` ride in the album's `metadata`
+  JSONB; a Discogs import also records `discogs_styles`/`discogs_formats`. The
+  wire `SearchResultOut`/`AlbumOut` deliberately do **not** expose the new ids.
+- **Discogs search label** reads the real search-payload key `label` (list of
+  strings), while still tolerating the release-payload `labels` (list of dicts)
+  shape used by `fetch_album`. `per_page` = the requested `limit` (clamped ≤ 100).
+- **Deviations from the issue text:** frontend `SearchResult` was *not* extended
+  with optional id fields (nothing consumed them) — only `AlbumSource` grew
+  `'itunes' | 'discogs'`; `AlbumPreviewModal.sourceLabel()` was left untouched
+  (it falls back to the raw provider name for iTunes/Discogs), a cosmetic
+  follow-up outside #12's allowed file set.
+- Provider tests mock all HTTP (no live calls); iTunes/Discogs failures are
+  exercised through the merge layer's degraded-provider path.
