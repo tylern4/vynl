@@ -284,3 +284,106 @@ def test_reference_action_routes(client, register_user, admin, auth_headers):
         json={"email": "bob@example.com", "password": "password123"},
     )
     assert stale.status_code == 401
+
+
+# --- admin user creation (issue #9) -----------------------------------------
+
+
+def test_admin_creates_active_user(client, admin, auth_headers):
+    headers = auth_headers("admin@example.com")
+    res = client.post(
+        "/api/users",
+        json={"name": "Carol", "email": "carol@example.com", "password": "password123"},
+        headers=headers,
+    )
+    assert res.status_code == 201, res.text
+    body = res.json()
+    assert body["email"] == "carol@example.com"
+    assert body["role"] == "user"
+    assert body["status"] == "active"
+    assert body["created_at"]
+    # Usable immediately — no admin approval step.
+    login = client.post(
+        "/api/auth/login",
+        json={"email": "carol@example.com", "password": "password123"},
+    )
+    assert login.status_code == 200
+
+
+def test_admin_creates_user_with_custom_role(client, admin, auth_headers):
+    headers = auth_headers("admin@example.com")
+    res = client.post(
+        "/api/users",
+        json={
+            "name": "Reader",
+            "email": "reader@example.com",
+            "password": "password123",
+            "role": "read_only",
+        },
+        headers=headers,
+    )
+    assert res.status_code == 201, res.text
+    assert res.json()["role"] == "read_only"
+
+
+def test_admin_can_create_second_admin(client, admin, auth_headers):
+    headers = auth_headers("admin@example.com")
+    res = client.post(
+        "/api/users",
+        json={
+            "name": "Second",
+            "email": "second@example.com",
+            "password": "password123",
+            "role": "admin",
+        },
+        headers=headers,
+    )
+    assert res.status_code == 201, res.text
+    assert res.json()["role"] == "admin"
+
+
+def test_create_user_requires_admin(client, register_user, admin, auth_headers):
+    register_user(email="bob@example.com")
+    headers = auth_headers("admin@example.com")
+    client.patch("/api/users/2", json={"status": "active"}, headers=headers)
+    res = client.post(
+        "/api/users",
+        json={"name": "Mallory", "email": "mallory@example.com", "password": "password123"},
+        headers=auth_headers("bob@example.com"),
+    )
+    assert res.status_code == 403
+
+
+def test_create_user_unauthenticated(client):
+    res = client.post(
+        "/api/users",
+        json={"name": "Anon", "email": "anon@example.com", "password": "password123"},
+    )
+    assert res.status_code == 401
+
+
+def test_create_user_duplicate_email_conflicts(client, admin, auth_headers):
+    headers = auth_headers("admin@example.com")
+    payload = {"name": "Dup", "email": "dup@example.com", "password": "password123"}
+    assert client.post("/api/users", json=payload, headers=headers).status_code == 201
+    assert client.post("/api/users", json=payload, headers=headers).status_code == 409
+
+
+def test_create_user_rejects_short_password(client, admin, auth_headers):
+    headers = auth_headers("admin@example.com")
+    res = client.post(
+        "/api/users",
+        json={"name": "Short", "email": "short@example.com", "password": "short"},
+        headers=headers,
+    )
+    assert res.status_code == 422
+
+
+def test_create_user_rejects_bad_email(client, admin, auth_headers):
+    headers = auth_headers("admin@example.com")
+    res = client.post(
+        "/api/users",
+        json={"name": "Bad", "email": "not-an-email", "password": "password123"},
+        headers=headers,
+    )
+    assert res.status_code == 422

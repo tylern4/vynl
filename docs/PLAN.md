@@ -195,10 +195,21 @@ reference: bcrypt hashes, HS256 tokens, `HTTPBearer`). All endpoints except
 
 | Method & path | Body | Response |
 | --- | --- | --- |
-| `POST /api/auth/register` | `{name, email, password, invite_code}` | `{user, access_token?}` — first user becomes `admin`+`active`, later signups `pending` until approved; v1 keeps the reference's admin-approval flow |
+| `POST /api/auth/register` | `{name, email, password, invite_code}` | `{user, access_token?}` — first user becomes `admin`+`active`, later signups `pending` until approved; registration still requires the invite code (#9 keeps the `pending` flow but adds the admin UI below) |
 | `POST /api/auth/login` | `{email, password}` | `{access_token, token_type, user}` |
 | `GET /api/auth/me` | — | `UserOut` |
-| `GET /api/users` / `PATCH /api/users/{id}` | admin only | same as reference (approve/role/password) |
+| `GET /api/users` | admin only | `UserAdminOut[]` (ordered by `created_at`) |
+| `POST /api/users` | admin only `{name, email, password, role="user", status="active"}` | `UserAdminOut` — direct creation for admins (#9), bypasses invite/pending; 409 on duplicate email |
+| `PATCH /api/users/{id}` | admin only `{status?, role?, password?}` | `UserAdminOut` (approve/role/password) |
+| `POST /api/users/{id}/approve` · `/deny` · `/reset-password` | admin only | `UserAdminOut` action routes |
+| `PATCH /api/users/{id}/role` | admin only `{role}` | `UserAdminOut` |
+| `DELETE /api/users/{id}` | admin only | `204` (self-delete blocked) |
+
+**Admin UI (#9).** The frontend exposes an admin-only `/admin` page (nav link
+shown to `role=admin` only; `AdminRoute` redirects non-admins to `/` and
+anonymous visitors to `/login`): add a user, list users with role/status,
+approve/deny, switch role, reset password, and delete. The current admin's own
+row is protected (no deny/delete, role select disabled).
 
 ### External search (for the "add album" flow)
 
@@ -519,6 +530,7 @@ Routes (react-router, `ProtectedRoute` wrapper same as reference):
 | `/add/manual` | `ManualAlbumPage` | manual entry form (title*/artist*/year/label/country/note) with a **dynamic tracklist editor** (per-row title + duration, entered as `m:ss` or plain seconds, add/remove rows); submit → `POST /albums/manual` → upload the picked cover → navigate to `/album/{id}`; a failed cover upload keeps the created album and offers inline retry (issue #11) |
 | `/find` | `FindPage` | library-wide song/album/tag search across `/api/tracks` + `/api/albums`; results show song → its album; click through to detail |
 | `/recommend` | `RecommendPage` | mode toggle (`dusty` / `random`), optional tag filter, big "Spin" button → recommendation card with reason + "Spun it" action |
+| `/admin` | `AdminPage` | **admin-only** (`AdminRoute`; non-admins → `/`, anonymous → `/login`): add a user (name/email/password/role), list users with role select + status pills, approve/deny, inline reset-password, delete-with-confirmation; the current admin's own row is protected (issue #9) |
 
 Conventions (match reference `api.ts` exactly): `request<T>` wrapper with
 `/api` prefix, Bearer token in localStorage (`vynl_token`), `ApiError` class, 401 →

@@ -786,3 +786,23 @@ shipped, decisions made, anything the next agent needs to know.
   the covers volume now matches the DB (11/14/15).
 - Tracker: issue #9 (admin-approval UI gap — pending accounts have no UI path)
   remains `open` as a known follow-up; everything else is done.
+
+## 2026-10-09 — Issue #9 admin panel — coordinator
+
+- Chose option (a): keep the existing invite + `pending` registration flow, but
+  give admins a product path to manage accounts.
+- **Backend:** new admin-only `POST /api/users` (`UserCreate`) creates an active
+  user directly — the "add new users" ask — with role/status selectable, 409 on a
+  duplicate email, 422 on short password / bad email; mirrors `/auth/register`.
+  Existing approve/deny/role/reset/delete routes unchanged. +8 tests in
+  `test_auth.py` (now 37).
+- **Frontend:** new `/admin` `AdminPage` (add-user form; user table with role
+  select, status pills, approve/deny, inline reset-password, delete behind an
+  explicit confirm). New `AdminRoute` guard (non-admins → `/`, anonymous →
+  `/login`) + an admin-only "Users" nav link. `api.ts` user-management methods,
+  `types.ts` `UserCreate`, admin styles. Current admin's own row is protected
+  (no deny/delete; role select disabled; "You" badge).
+- **Tests:** backend **250 passed** (was 242), frontend **159 passed** (21 files;
+  was 142), `npm run build` ✓. Palette-token-only styling; no DB migration.
+- **Docs:** PLAN §5 (auth table + admin-UI note) and §7 (route), README features
+  + setup + counts, issue #9 marked done with decision/outcome.

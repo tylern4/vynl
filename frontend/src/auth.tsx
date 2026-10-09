@@ -93,3 +93,12 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   if (!user) return <Navigate to="/login" replace />
   return children
 }
+
+/** Like ProtectedRoute, but admin-only (issue #9). Non-admins go to the shelf. */
+export function AdminRoute({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div className="centered">Loading…</div>
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role !== 'admin') return <Navigate to="/" replace />
+  return children
+}

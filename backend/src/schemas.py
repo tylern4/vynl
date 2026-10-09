@@ -57,6 +57,18 @@ class UserUpdate(BaseModel):
     password: str | None = Field(default=None, min_length=8, max_length=128)
 
 
+class UserCreate(BaseModel):
+    """Admin-only direct user creation (issue #9). Skips the invite/pending
+    flow: the admin supplies credentials and the account is active by default.
+    """
+
+    name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    role: Role = Role.user
+    status: UserStatus = UserStatus.active
+
+
 # --- Collection API (PLAN §5, issue #3) -------------------------------------
 
 

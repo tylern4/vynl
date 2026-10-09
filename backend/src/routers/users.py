@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ..auth import get_admin_user, hash_password
 from ..database import get_db
 from ..models import Role, User, UserStatus
-from ..schemas import PasswordReset, RoleUpdate, UserAdminOut, UserUpdate
+from ..schemas import PasswordReset, RoleUpdate, UserAdminOut, UserCreate, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -57,6 +57,37 @@ def list_users(
     db: Annotated[Session, Depends(get_db)],
 ):
     return db.scalars(select(User).order_by(User.created_at.asc(), User.id.asc())).all()
+
+
+@router.post("", response_model=UserAdminOut, status_code=status.HTTP_201_CREATED)
+def create_user(
+    payload: UserCreate,
+    admin: Annotated[User, Depends(get_admin_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Admin-only direct user creation (issue #9).
+
+    Bypasses the public invite/approval flow: the admin sets the credentials and
+    role, and the account is active immediately (unless ``status`` is overridden).
+    Existing email → 409, mirroring ``/auth/register``.
+    """
+    existing = db.scalar(select(User).where(User.email == payload.email.lower()))
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with that email already exists",
+        )
+    user = User(
+        name=payload.name.strip(),
+        email=payload.email.lower(),
+        password_hash=hash_password(payload.password),
+        role=payload.role,
+        status=payload.status,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 @router.patch("/{user_id}", response_model=UserAdminOut)

@@ -10,10 +10,13 @@ import type {
   Recommendation,
   RecommendationParams,
   RegisterResult,
+  Role,
   SearchResult,
   Tag,
   TrackSearchResult,
   User,
+  UserAdmin,
+  UserCreate,
 } from './types'
 
 const TOKEN_KEY = 'vynl_token'
@@ -87,6 +90,25 @@ export const api = {
       body: JSON.stringify(data),
     }),
   me: () => request<User>('/auth/me'),
+
+  // ---- Admin: user management (issue #9) ----
+  listUsers: () => request<UserAdmin[]>('/users'),
+  createUser: (data: UserCreate) =>
+    request<UserAdmin>('/users', { method: 'POST', body: JSON.stringify(data) }),
+  approveUser: (id: number) =>
+    request<UserAdmin>(`/users/${id}/approve`, { method: 'POST' }),
+  denyUser: (id: number) => request<UserAdmin>(`/users/${id}/deny`, { method: 'POST' }),
+  setUserRole: (id: number, role: Role) =>
+    request<UserAdmin>(`/users/${id}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    }),
+  resetUserPassword: (id: number, password: string) =>
+    request<UserAdmin>(`/users/${id}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    }),
+  deleteUser: (id: number) => request<void>(`/users/${id}`, { method: 'DELETE' }),
 
   // ---- External search (add-album flow) ----
   searchAlbums: (q: string, limit = 20) => {

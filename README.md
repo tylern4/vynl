@@ -45,6 +45,9 @@ frontend, everything behind one `docker compose up`.
   record shop, 70s hippie, death metal, punk, classical, and the default warm
   look), each fully styled for light and dark mode and switchable from a settings
   page.
+- **User management** — admins get a `/admin` page to add users directly (no
+  invite needed), list the accounts with roles and status, approve or deny
+  pending signups, switch roles, reset passwords, and delete users.
 
 ## Architecture
 
@@ -78,8 +81,10 @@ docker compose up --build -d
 That builds and starts all three services. Wait a few seconds for migrations,
 then open [http://localhost:8080](http://localhost:8080) and register with the
 invite code from `.env`. **The first account is automatically approved as admin;
-later signups stay `pending` until an admin approves them** (via `GET/PATCH
-/api/users`).
+later signups stay `pending` until approved.** Admins manage accounts from the
+in-app **Users** page (`/admin`) — add users directly, approve/deny pending
+signups, change roles, reset passwords, or delete accounts (the raw
+`GET/PATCH/POST /api/users` routes back the same page).
 
 Check it's healthy:
 
@@ -144,7 +149,7 @@ the dev server directly or inside Docker:
 DATABASE_URL=postgresql+psycopg://vynl:vynl@localhost:5432/vynl \
 JWT_SECRET=dev INVITE_CODE=dev uvicorn src.main:app --reload --port 8001
 
-pytest          # 242 tests, uses a disposable <db>_test Postgres DB
+pytest          # 250 tests, uses a disposable <db>_test Postgres DB
 ```
 
 > The provider tests mock HTTP — no live network. `pytest` reuses the
@@ -158,7 +163,7 @@ Node ≥ 20 (CI uses 20):
 cd frontend
 npm ci
 npm run dev     # http://localhost:5173, proxies /api to :8000
-npm test        # Vitest + React Testing Library, 142 tests
+npm test        # Vitest + React Testing Library, 159 tests
 npm run build   # tsc -b && vite build
 ```
 

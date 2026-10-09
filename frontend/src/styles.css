@@ -2224,3 +2224,162 @@ a:focus-visible,
     grid-column: 2 / -1;
   }
 }
+
+/* ---------- Admin: user management (issue #9) ---------- */
+
+.admin-create {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.admin-create-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.admin-create .field input,
+.admin-create .field select,
+.admin-reset input {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.form-notice {
+  margin: 0;
+  color: var(--accent-ink);
+  font-size: 0.88rem;
+}
+
+.admin-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  min-width: 640px;
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 0.6rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.admin-table th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.admin-table tbody tr:hover {
+  background: var(--hover);
+}
+
+.admin-user-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+.admin-user-email {
+  display: block;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.admin-you {
+  display: inline-block;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  border: 1px solid var(--accent);
+}
+
+.admin-table select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.status-active {
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.status-pending {
+  color: var(--mb);
+  border-color: var(--mb-border);
+}
+
+.status-denied {
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+
+.admin-date {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.admin-reset {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.admin-reset label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.admin-reset-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+@media (max-width: 640px) {
+  .admin-create .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -230,3 +230,82 @@ describe('getCoverBlob', () => {
     await expect(api.getCoverBlob(7)).resolves.toBeNull()
   })
 })
+
+describe('admin user management', () => {
+  it('lists users', async () => {
+    mockFetch(200, [{ id: 1, email: 'a@example.com' }])
+    await expect(api.listUsers()).resolves.toEqual([{ id: 1, email: 'a@example.com' }])
+    expect(fetch).toHaveBeenCalledWith('/api/users', expect.objectContaining({ headers: {} }))
+  })
+
+  it('posts the new user payload to /users', async () => {
+    setToken('tok123')
+    mockFetch(201, { id: 3, email: 'carol@example.com' })
+    await api.createUser({
+      name: 'Carol',
+      email: 'carol@example.com',
+      password: 'password123',
+      role: 'user',
+    })
+    expect(fetch).toHaveBeenCalledWith('/api/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer tok123',
+      },
+      body: JSON.stringify({
+        name: 'Carol',
+        email: 'carol@example.com',
+        password: 'password123',
+        role: 'user',
+      }),
+    })
+  })
+
+  it('posts to the action routes for approve, deny, and reset-password', async () => {
+    setToken('tok123')
+    mockFetch(200, { id: 2 })
+    await api.approveUser(2)
+    expect(fetch).toHaveBeenLastCalledWith(
+      '/api/users/2/approve',
+      expect.objectContaining({ method: 'POST' }),
+    )
+    mockFetch(200, { id: 2 })
+    await api.denyUser(2)
+    expect(fetch).toHaveBeenLastCalledWith(
+      '/api/users/2/deny',
+      expect.objectContaining({ method: 'POST' }),
+    )
+    mockFetch(200, { id: 2 })
+    await api.resetUserPassword(2, 'newpass123')
+    expect(fetch).toHaveBeenLastCalledWith('/api/users/2/reset-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer tok123',
+      },
+      body: JSON.stringify({ password: 'newpass123' }),
+    })
+  })
+
+  it('patch-changes a role and deletes a user', async () => {
+    setToken('tok123')
+    mockFetch(200, { id: 2, role: 'read_only' })
+    await api.setUserRole(2, 'read_only')
+    expect(fetch).toHaveBeenLastCalledWith('/api/users/2/role', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer tok123',
+      },
+      body: JSON.stringify({ role: 'read_only' }),
+    })
+
+    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 204 }))
+    await expect(api.deleteUser(2)).resolves.toBeUndefined()
+    expect(fetch).toHaveBeenLastCalledWith(
+      '/api/users/2',
+      expect.objectContaining({ method: 'DELETE' }),
+    )
+  })
+})

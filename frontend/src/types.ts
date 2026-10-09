@@ -14,6 +14,15 @@ export interface UserAdmin extends User {
   created_at: string
 }
 
+/** Body of `POST /api/users` (admin-only direct creation, issue #9). */
+export interface UserCreate {
+  name: string
+  email: string
+  password: string
+  role?: Role
+  status?: UserStatus
+}
+
 export interface RegisterResult {
   user: User
   access_token: string | null

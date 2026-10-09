@@ -1,9 +1,10 @@
 import { Link, Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom'
-import { Dices, Disc3, Library, Moon, Plus, Search, Settings, Sun } from 'lucide-react'
-import { ProtectedRoute, useAuth } from './auth'
+import { Dices, Disc3, Library, Moon, Plus, Search, Settings, Sun, Users } from 'lucide-react'
+import { AdminRoute, ProtectedRoute, useAuth } from './auth'
 import { useTheme } from './theme'
 import { LoginPage } from './pages/Login'
 import { RegisterPage } from './pages/Register'
+import { AdminPage } from './pages/AdminPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ShelfPage } from './pages/ShelfPage'
 import { AlbumDetailPage } from './pages/AlbumDetailPage'
@@ -35,6 +36,11 @@ function AppShell() {
           <NavLink to="/recommend">
             <Dices size={15} aria-hidden /> Recommend
           </NavLink>
+          {user?.role === 'admin' && (
+            <NavLink to="/admin">
+              <Users size={15} aria-hidden /> Users
+            </NavLink>
+          )}
         </nav>
         <div className="topbar-actions">
           <span className="topbar-user">{user?.name}</span>
@@ -75,6 +81,14 @@ export default function App() {
         <Route path="/find" element={<FindPage />} />
         <Route path="/recommend" element={<RecommendPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminPage />
+            </AdminRoute>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
