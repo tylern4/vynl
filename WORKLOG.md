@@ -806,3 +806,17 @@ shipped, decisions made, anything the next agent needs to know.
   was 142), `npm run build` ✓. Palette-token-only styling; no DB migration.
 - **Docs:** PLAN §5 (auth table + admin-UI note) and §7 (route), README features
   + setup + counts, issue #9 marked done with decision/outcome.
+
+## 2026-10-09 — Issue #9 follow-up: move admin entry into Settings — coordinator
+
+- Owner asked to drop the separate top-nav "Users" link and nest the admin entry
+  under Settings instead.
+- **Frontend:** removed the admin-only `NavLink` from `App.tsx`; added an
+  admin-only **Administration** section to `SettingsPage` with a **Manage users**
+  link to `/admin` (uses `useAuth`, hidden for non-admins). The `AdminRoute` guard
+  and `/admin` page are unchanged, so the URL still works and is still protected.
+- **Tests:** `SettingsPage.test.tsx` now mocks `useAuth` and wraps renders in a
+  router; two new cases cover the admin link (href `/admin`) and its absence for
+  non-admins. Frontend **161 passed** (was 159), `npm run build` ✓. No backend
+  change.
+- **Docs:** PLAN §5/§7 note the Settings entry; README features + setup updated.

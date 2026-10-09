@@ -1,4 +1,6 @@
-import { Moon, Sun } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Moon, Sun, Users } from 'lucide-react'
+import { useAuth } from '../auth'
 import { PALETTES, useTheme } from '../theme'
 
 function SwatchStrip({
@@ -37,6 +39,7 @@ function SwatchStrip({
 /** Theme settings: palette grid + light/dark toggle. Changes persist instantly. */
 export function SettingsPage() {
   const { mode, palette, setMode, setPalette } = useTheme()
+  const { user } = useAuth()
 
   return (
     <div className="page-inner">
@@ -105,6 +108,19 @@ export function SettingsPage() {
           </button>
         </div>
       </section>
+
+      {user?.role === 'admin' && (
+        <section className="settings-section" aria-labelledby="admin-heading">
+          <h2 id="admin-heading">Administration</h2>
+          <p>
+            Add users, approve or deny pending signups, change roles, and reset
+            passwords.
+          </p>
+          <Link to="/admin" className="btn btn-primary">
+            <Users size={15} aria-hidden /> Manage users
+          </Link>
+        </section>
+      )}
     </div>
   )
 }

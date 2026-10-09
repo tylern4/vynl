@@ -205,11 +205,11 @@ reference: bcrypt hashes, HS256 tokens, `HTTPBearer`). All endpoints except
 | `PATCH /api/users/{id}/role` | admin only `{role}` | `UserAdminOut` |
 | `DELETE /api/users/{id}` | admin only | `204` (self-delete blocked) |
 
-**Admin UI (#9).** The frontend exposes an admin-only `/admin` page (nav link
-shown to `role=admin` only; `AdminRoute` redirects non-admins to `/` and
-anonymous visitors to `/login`): add a user, list users with role/status,
-approve/deny, switch role, reset password, and delete. The current admin's own
-row is protected (no deny/delete, role select disabled).
+**Admin UI (#9).** The frontend exposes an admin-only `/admin` page, reached from
+a **Manage users** entry in Settings (shown to `role=admin` only); `AdminRoute`
+redirects non-admins to `/` and anonymous visitors to `/login`. It can add a user,
+list users with role/status, approve/deny, switch role, reset password, and delete.
+The current admin's own row is protected (no deny/delete, role select disabled).
 
 ### External search (for the "add album" flow)
 
@@ -556,7 +556,8 @@ palettes** — default, citypop, cyberpunk, recordshop, hippie, deathmetal, punk
 classical — each shipped as a full light *and* dark token block in `styles.css`
 (`:root[data-palette='<name>']` and `:root[data-palette='<name>'][data-theme='dark']`),
 with the default palette reproducing the original warm tokens exactly. Palette and
-mode are picked on the `/settings` page (gear icon in the top bar) and both saved
+mode are picked on the `/settings` page (gear icon in the top bar), which also
+carries an admin-only **Manage users** entry linking to `/admin`; both saved
 attributes are applied pre-first-paint by `index.html`'s inline guard so reloads
 never flash the wrong colors.
 

@@ -1,17 +1,28 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { PALETTES, PALETTE_STORAGE_KEY } from '../theme'
+import { defaultAuth } from '../test/utils'
 import { SettingsPage } from './SettingsPage'
+
+const mocks = vi.hoisted(() => ({ useAuth: vi.fn() }))
+
+vi.mock('../auth', () => ({ useAuth: () => mocks.useAuth() }))
 
 beforeEach(() => {
   localStorage.clear()
   delete document.documentElement.dataset.theme
   delete document.documentElement.dataset.palette
+  mocks.useAuth.mockReturnValue(defaultAuth())
 })
 
 function renderSettings() {
-  return render(<SettingsPage />)
+  return render(
+    <MemoryRouter>
+      <SettingsPage />
+    </MemoryRouter>,
+  )
 }
 
 function paletteButton(label: string) {
@@ -80,5 +91,29 @@ describe('SettingsPage', () => {
     expect(paletteButton('Death metal')).toHaveAccessibleName(
       'Death metal palette',
     )
+  })
+
+  it('shows admins a link to user management', () => {
+    renderSettings()
+    expect(screen.getByRole('link', { name: /manage users/i })).toHaveAttribute(
+      'href',
+      '/admin',
+    )
+  })
+
+  it('hides the admin link from non-admins', () => {
+    mocks.useAuth.mockReturnValue(
+      defaultAuth({
+        user: {
+          id: 2,
+          name: 'Bob',
+          email: 'bob@example.com',
+          role: 'user',
+          status: 'active',
+        },
+      }),
+    )
+    renderSettings()
+    expect(screen.queryByRole('link', { name: /manage users/i })).toBeNull()
   })
 })

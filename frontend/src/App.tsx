@@ -1,5 +1,5 @@
 import { Link, Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom'
-import { Dices, Disc3, Library, Moon, Plus, Search, Settings, Sun, Users } from 'lucide-react'
+import { Dices, Disc3, Library, Moon, Plus, Search, Settings, Sun } from 'lucide-react'
 import { AdminRoute, ProtectedRoute, useAuth } from './auth'
 import { useTheme } from './theme'
 import { LoginPage } from './pages/Login'
@@ -36,11 +36,6 @@ function AppShell() {
           <NavLink to="/recommend">
             <Dices size={15} aria-hidden /> Recommend
           </NavLink>
-          {user?.role === 'admin' && (
-            <NavLink to="/admin">
-              <Users size={15} aria-hidden /> Users
-            </NavLink>
-          )}
         </nav>
         <div className="topbar-actions">
           <span className="topbar-user">{user?.name}</span>
