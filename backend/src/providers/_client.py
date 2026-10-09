@@ -12,6 +12,7 @@ from typing import Any
 
 import httpx
 
+from ..version import USER_AGENT
 from .base import NotFound, ProviderError
 
 DEEZER_BASE = "https://api.deezer.com"
@@ -28,7 +29,13 @@ _client_lock = threading.Lock()
 
 def _build_client() -> httpx.Client:
     # follow_redirects: CAA /front-500 answers 302 → archive.org (PLAN §6).
-    return httpx.Client(timeout=DEFAULT_TIMEOUT, follow_redirects=True)
+    # Every request identifies the app; providers may override with a more
+    # specific User-Agent (MusicBrainz appends the contact email).
+    return httpx.Client(
+        timeout=DEFAULT_TIMEOUT,
+        follow_redirects=True,
+        headers={"User-Agent": USER_AGENT},
+    )
 
 
 def get_client() -> httpx.Client:

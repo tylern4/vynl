@@ -1,4 +1,5 @@
 .env
+.env.bak.*
 covers/
 __pycache__/
 *.pyc

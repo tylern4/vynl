@@ -39,9 +39,13 @@ Identical conventions to [baby-tracking-app](https://github.com/tylern4/baby-tra
 
 | Service  | Tech                                            | Port  | Container     |
 | -------- | ----------------------------------------------- | ----- | ------------- |
-| `db`     | PostgreSQL 16 (alpine)                          | 5432  | `vynl-db`     |
+| `db`     | PostgreSQL 16 (alpine)                          | — (internal only) | `vynl-db`     |
 | `backend`| Python 3.12, FastAPI, SQLAlchemy 2, Alembic     | 8000  | `vynl-backend`|
 | `frontend`| React 18 + TypeScript + Vite, served by nginx   | 80/8080 | `vynl-frontend` |
+
+Postgres listens only inside the compose network (`db:5432`); it is not
+published on the host. For local tooling (psql, host-side pytest) publish it
+with a gitignored `docker-compose.override.yml` mapping `5432` (see §7).
 
 Key backend deps (pinned like the reference project): `fastapi`, `uvicorn`,
 `sqlalchemy`, `alembic`, `psycopg[binary]`, `pydantic-settings`, `bcrypt`, `PyJWT`,

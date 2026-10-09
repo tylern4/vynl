@@ -32,6 +32,7 @@ from src.providers import (
     set_client,
 )
 from src.providers._merge import merge_results, normalize, normalize_artist
+from src.version import USER_AGENT
 
 # --------------------------------------------------------------- constants
 
@@ -649,6 +650,19 @@ def test_url_exists_falls_back_to_get_when_head_rejected():
         }
     )
     assert _client.url_exists("https://coverartarchive.org/probe") is True
+
+
+def test_shared_client_identifies_as_vynl():
+    """Every outbound request carries a vynl User-Agent by default, so provider
+    calls that don't set their own header (Deezer, iTunes, Cover Art Archive)
+    still identify the app."""
+    assert USER_AGENT == "vynl/0.1.0 (+https://github.com/tylern4/vynl)"
+    client = _client._build_client()
+    try:
+        assert client.headers["user-agent"] == USER_AGENT
+    finally:
+        client.close()
+
 
 
 def test_musicbrainz_rate_limiter_spaces_requests(monkeypatch):

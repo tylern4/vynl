@@ -14,6 +14,7 @@ import time
 from dataclasses import dataclass
 
 from ..config import settings
+from ..version import APP_NAME, APP_VERSION
 from . import _client
 from .base import NotFound, SearchResult, TrackInput
 
@@ -58,7 +59,7 @@ def _throttle() -> None:
 
 
 def _headers() -> dict[str, str]:
-    return {"User-Agent": f"vynl/0.1.0 ({settings.musicbrainz_contact})"}
+    return {"User-Agent": f"{APP_NAME}/{APP_VERSION} ({settings.musicbrainz_contact})"}
 
 
 def _get(url: str, *, params: dict, not_found_statuses: tuple[int, ...] = (404,)):

@@ -21,13 +21,13 @@ from dataclasses import dataclass, field
 import httpx
 
 from ..config import settings
+from ..version import USER_AGENT
 from . import _client
 from .base import NotFound, ProviderError, SearchResult, TrackInput
 
 SEARCH_URL = f"{_client.DISCOGS_BASE}/database/search"
 RELEASE_URL = f"{_client.DISCOGS_BASE}/releases/{{release_id}}"
 
-USER_AGENT = "vynl/0.1.0 (+https://github.com/tylern4/vynl)"
 _HEADERS = {"User-Agent": USER_AGENT}
 
 # ~60 req/min authenticated → floor of 1 req/s; retried 429s back off.

@@ -820,3 +820,49 @@ shipped, decisions made, anything the next agent needs to know.
   non-admins. Frontend **161 passed** (was 159), `npm run build` ✓. No backend
   change.
 - **Docs:** PLAN §5/§7 note the Settings entry; README features + setup updated.
+
+## 2026-10-09 — Docs/quickstart/Discogs + dark-mode screenshots + vynl User-Agent — coordinator-helper
+
+- **Deploy docs:** README gains a guided **Quick start** section
+  (`scripts/quickstart.sh`) and an **Updating to the latest version** section
+  (`git pull && docker compose up --build -d`, `build --pull`, logs/down, plus an
+  optional GHCR prebuilt-images override). The Configuration table documents
+  `ITUNES_COUNTRIES` and notes that editing `.env` needs `docker compose up -d`.
+- **Discogs token:** step-by-step "Enabling Discogs (optional)" in README and
+  matching steps in `.env.example`
+  (<https://www.discogs.com/settings/developers>).
+- **Quickstart:** `scripts/quickstart.sh` copies `.env.example` → `.env`,
+  generates random `POSTGRES_PASSWORD` (48 hex) / `JWT_SECRET` (64 hex), prompts
+  for invite code, MusicBrainz contact, iTunes storefronts, Discogs token and host
+  ports (writes `docker-compose.override.yml` only when non-default), then offers
+  to build+start. Flags `-y/--yes`, `--no-start`, `-h/--help`; a non-TTY shell
+  uses defaults and does not start. Tested non-interactive and interactive (pty).
+- **Outbound identity (owner request):** new `backend/src/version.py` defines
+  `USER_AGENT = "vynl/0.1.0 (+https://github.com/tylern4/vynl)"`. The shared httpx
+  client now sends it by default, so Deezer / iTunes / Cover Art Archive requests
+  identify as vynl; MusicBrainz appends its contact (`vynl/0.1.0 (<contact>)`);
+  Discogs reuses the same constant; the artwork downloader uses it too. +1
+  provider test → backend **251 passed**, frontend **161 passed**.
+- **Compose fix:** `docker-compose.yml` now forwards `DISCOGS_TOKEN` and
+  `ITUNES_COUNTRIES` to the backend (`${DISCOGS_TOKEN:-}`,
+  `${ITUNES_COUNTRIES:-US,JP,GB}`) — previously they never reached the container.
+  Rebuilt + restarted the backend; `/api/health` ok and the live container reports
+  the vynl User-Agent.
+- **DB no longer exposed on the host (owner request):** removed the `5432:5432`
+  `ports` mapping from the committed `docker-compose.yml` — the backend alone
+  talks to Postgres over the internal network (`db:5432`). README and PLAN mark
+  the db port as internal-only and document a local
+  `docker-compose.override.yml` (`services.db.ports: ["5432:5432"]`) for host-side
+  tooling; the gitignored override here will still publish it so local psql/pytest
+  keep working. Base `docker compose -f docker-compose.yml config` shows no db
+  port; effective local config does.
+- **Screenshots (dark mode):** re-captured the five feature shots (shelf, album
+  detail, add, find, recommend) in dark mode and added an eight-image theme
+  gallery (`docs/screenshots/themes/*.jpg` — default, city pop, cyberpunk, record
+  shop, 70s hippie, death metal, punk, classical), all linked from the README.
+  Captured from a temporary `shelf-demo@example.com` shelf (12 live-imported
+  albums); the demo user, its albums, plays, tags and cached covers were then
+  removed.
+- **Note for coordinator:** owner account 5 also holds albums 17–20 (Rumours,
+  Tusk, America, COWBOY BEBOP; created 2026-10-09 ~04:36) that predate this
+  session and were left untouched. Working tree is uncommitted per protocol.

@@ -15,11 +15,11 @@ from pathlib import Path
 import httpx
 
 from ..config import settings
+from ..version import USER_AGENT
 
 # ~15 MB cap on downloaded artwork (issue #3 acceptance criteria).
 MAX_COVER_BYTES = 15 * 1024 * 1024
 DOWNLOAD_TIMEOUT = 20.0
-USER_AGENT = "vynl/0.1.0 (album cover fetcher)"
 
 # Media type we serve per stored extension.
 _MEDIA_TYPES = {

@@ -14,8 +14,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    ports:
-      - "5432:5432"
+    # No host port: the backend reaches Postgres on the internal compose
+    # network (db:5432). Publish it only for local tooling via a gitignored
+    # docker-compose.override.yml (see README → Development → Backend).
 
   backend:
     build: ./backend
@@ -28,6 +29,8 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: 43200
       INVITE_CODE: ${INVITE_CODE:?INVITE_CODE must be set in .env}
       MUSICBRAINZ_CONTACT: ${MUSICBRAINZ_CONTACT:-}
+      DISCOGS_TOKEN: ${DISCOGS_TOKEN:-}
+      ITUNES_COUNTRIES: ${ITUNES_COUNTRIES:-US,JP,GB}
       COVERS_DIR: /app/covers
     volumes:
       - covers_data:/app/covers
