@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Disc3 } from 'lucide-react'
 import { useAuth } from '../auth'
 import { ApiError } from '../api'
+import { Logo } from '../components/Logo'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -31,7 +31,7 @@ export function LoginPage() {
       <form className="auth-card" onSubmit={onSubmit}>
         <div>
           <h1 className="auth-title">
-            <Disc3 size={26} /> vynl
+            <Logo size={30} /> vynl
           </h1>
           <p className="auth-sub">Sign in to your record shelf.</p>
         </div>

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Disc3 } from 'lucide-react'
 import { useAuth } from '../auth'
 import { ApiError } from '../api'
+import { Logo } from '../components/Logo'
 
 export function RegisterPage() {
   const { register } = useAuth()
@@ -39,7 +39,7 @@ export function RegisterPage() {
         <div className="auth-card">
           <div>
             <h1 className="auth-title">
-              <Disc3 size={26} /> vynl
+              <Logo size={30} /> vynl
             </h1>
             <p className="auth-sub">Account created — awaiting approval.</p>
           </div>
@@ -60,7 +60,7 @@ export function RegisterPage() {
       <form className="auth-card" onSubmit={onSubmit}>
         <div>
           <h1 className="auth-title">
-            <Disc3 size={26} /> vynl
+            <Logo size={30} /> vynl
           </h1>
           <p className="auth-sub">Create an account. An admin will approve your access.</p>
         </div>

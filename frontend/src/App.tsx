@@ -1,6 +1,7 @@
 import { Link, Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom'
-import { Dices, Disc3, Library, Moon, Plus, Search, Settings, Sun } from 'lucide-react'
+import { Dices, Library, Moon, Plus, Search, Settings, Sun } from 'lucide-react'
 import { AdminRoute, ProtectedRoute, useAuth } from './auth'
+import { Logo } from './components/Logo'
 import { useTheme } from './theme'
 import { LoginPage } from './pages/Login'
 import { RegisterPage } from './pages/Register'
@@ -21,7 +22,7 @@ function AppShell() {
     <div className="app-shell">
       <header className="topbar">
         <Link to="/" className="brand">
-          <Disc3 size={22} /> vynl
+          <Logo /> vynl
         </Link>
         <nav className="topnav" aria-label="Primary">
           <NavLink to="/" end>

@@ -866,3 +866,24 @@ shipped, decisions made, anything the next agent needs to know.
 - **Note for coordinator:** owner account 5 also holds albums 17–20 (Rumours,
   Tusk, America, COWBOY BEBOP; created 2026-10-09 ~04:36) that predate this
   session and were left untouched. Working tree is uncommitted per protocol.
+
+## 2026-10-09 — Brand logo in the top bar (owner request) — coordinator-helper
+
+- New `frontend/src/components/Logo.tsx`: an inline-SVG vinyl-record mark with
+  the brand "V" cut into the center label. It reads the theme tokens
+  (`currentColor` → `--accent-ink` for the disc, `--accent` for the label,
+  `--on-accent` for the V) so the logo re-tints itself for every palette in
+  light and dark mode.
+- Replaces the placeholder `Disc3` lucide icon in the top-bar brand (App.tsx)
+  **and** on the Login / Register auth titles; `Disc3` remains for feature
+  icons (add-album empty state, "I spun this").
+- New `frontend/public/vynl-logo.svg` favicon (fixed brand colors, soft tile)
+  linked in `index.html`; served by Vite + nginx.
+- Tests: +2 (`Logo.test.tsx`) → frontend **163 passed** (was 161), build ✓. Live
+  verification on the rebuilt container: top-bar `.brand svg` resolves to the
+  palette accent (e.g. citypop dark disc `#e056d6`, label `#6b5ce0`); `/vynl-logo.svg`
+  → 200 `image/svg+xml`.
+- README screenshots re-captured with the new logo (5 dark-mode feature shots +
+  8-palette theme gallery; temp shelf user re-seeded with 12 albums — one
+  MusicBrainz 503 blip retried with backoff — then cleaned up, DB back to owner
+  only). README test count 163.
