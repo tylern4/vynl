@@ -33,9 +33,9 @@ export function Logo({ size = 26 }: { size?: number }) {
         stroke="var(--accent-dark)"
         strokeWidth="1"
       />
-      {/* brand V */}
+      {/* brand V — arm tips up at y=13, apex down at y=19.4 */}
       <path
-        d="M12 18.8 L16 12.8 L20 18.8"
+        d="M12 13 L16 19.4 L20 13"
         stroke="var(--on-accent)"
         strokeWidth="1.9"
         strokeLinecap="round"

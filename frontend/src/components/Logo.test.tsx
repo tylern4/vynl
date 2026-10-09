@@ -20,4 +20,15 @@ describe('Logo', () => {
     const { container } = render(<Logo />)
     expect(container.querySelector('svg')).toHaveAttribute('width', '26')
   })
+
+  it('draws the "V" pointing down (apex is the lowest point)', () => {
+    const { container } = render(<Logo />)
+    const d = container.querySelector('path')?.getAttribute('d') ?? ''
+    const nums = d.match(/-?[\d.]+/g)?.map(Number) ?? []
+    expect(nums).toHaveLength(6) // M x1 y1 L x2 y2 L x3 y3
+    const [, arm1Y, , apexY, , arm2Y] = nums
+    // apex must be below both arm tips, otherwise the V renders upside-down
+    expect(apexY).toBeGreaterThan(arm1Y)
+    expect(apexY).toBeGreaterThan(arm2Y)
+  })
 })

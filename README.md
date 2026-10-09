@@ -279,7 +279,7 @@ Node ≥ 20 (CI uses 20):
 cd frontend
 npm ci
 npm run dev     # http://localhost:5173, proxies /api to :8000
-npm test        # Vitest + React Testing Library, 163 tests
+npm test        # Vitest + React Testing Library, 164 tests
 npm run build   # tsc -b && vite build
 ```
 

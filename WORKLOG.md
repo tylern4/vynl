@@ -887,3 +887,9 @@ shipped, decisions made, anything the next agent needs to know.
   8-palette theme gallery; temp shelf user re-seeded with 12 albums — one
   MusicBrainz 503 blip retried with backoff — then cleaned up, DB back to owner
   only). README test count 163.
+- **V orientation fix (owner note):** the brand V was drawn apex-up (a caret
+  `^`). Corrected the `d` coordinates in both `Logo.tsx` and the favicon so the
+  apex sits at the bottom (`M12 13 L16 19.4 L20 13`); added an orientation test
+  asserting the apex is the lowest point → frontend **164 passed** (was 163).
+  Live-verified `vPointsDown: true` on the rebuilt container and re-captured the
+  README screenshots; demo seed cleaned up again.
