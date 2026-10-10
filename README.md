@@ -70,7 +70,7 @@ dark mode for each one.
 | Service    | Tech                                          | Container      | Exposed port |
 | ---------- | --------------------------------------------- | -------------- | ------------ |
 | `db`       | PostgreSQL 16 (alpine), `pg_isready` healthcheck | `vynl-db`    | — (internal only) |
-| `backend`  | Python 3.12, FastAPI, SQLAlchemy 2, Alembic, uvicorn | `vynl-backend` | 8000     |
+| `backend`  | Python 3.14, FastAPI, SQLAlchemy 2, Alembic, uvicorn | `vynl-backend` | 8000     |
 | `frontend` | React 18 + TypeScript + Vite, served by nginx (proxies `/api/` → `backend:8000`) | `vynl-frontend` | 8080 |
 
 Postgres is deliberately **not** published on the host — only the backend talks
@@ -307,7 +307,7 @@ npm run build   # tsc -b && vite build
 
 `.github/workflows/ci.yml` runs three jobs:
 
-1. `backend-tests` — pytest in `backend/` against a Postgres 16 service container (Python 3.12, pip cache on `requirements-dev.txt`).
+1. `backend-tests` — pytest in `backend/` against a Postgres 16 service container (Python 3.14, pip cache on `requirements-dev.txt`).
 2. `frontend-tests` — `npm ci && npm test && npm run build` (Node 20, npm cache).
 3. `build-and-push` — on pushes to `main`, builds both images with Buildx and pushes them to GHCR (`ghcr.io/<repo>/backend|frontend:latest` and `:${{ github.sha }}`).
 

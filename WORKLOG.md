@@ -966,3 +966,25 @@ shipped, decisions made, anything the next agent needs to know.
 - README "Updating to the latest version" rewritten around
   `scripts/quickstart.sh --update` (script first, the manual `git pull && docker
   compose up --build -d` recipe kept behind it).
+
+## 2026-10-10 — Bump backend to Python 3.14 — coordinator
+
+- Moved the backend runtime + tests from Python 3.12 to 3.14: `backend/Dockerfile`
+  `FROM python:3.14-slim` (currently 3.14.8) and CI `python-version: '3.14'`.
+  Chose 3.14 over 3.15 because the official `python:3.15-slim` image is not on
+  Docker Hub yet (only `3.15.0rc3`) — 3.15.0 final shipped 2026-10-09 and the
+  official image lags.
+- Only two pins needed bumping for 3.14 (everything else ships cp314 or
+  abi3/pure-Python wheels):
+  - `psycopg[binary]` `3.2.3` → `3.2.13` (3.2.3 has no cp314 wheel).
+  - `sqlalchemy` `2.0.36` → `2.0.54` — 2.0.36 *installs* on 3.14 via its
+    pure-Python wheel but crashes at import (`typing.Union.__getitem__` requires
+    a Union, not a tuple). Stayed within the 2.0.x line (not 2.1) to avoid API
+    churn.
+- Docs: README (architecture table + CI description) and PLAN §2 table now read
+  "Python 3.14"; historical WORKLOG/issue files left as-is.
+- Verification: `docker compose build backend` on `python:3.14-slim` green (8
+  layers, pip install OK); full backend suite **251 passed** on 3.14.8
+  (SQLAlchemy 2.0.54, psycopg 3.2.13) against the compose Postgres. Only
+  deprecation warnings (starlette/fastapi `asyncio.iscoroutinefunction`, slated
+  for removal in 3.16) — no failures. No model/migration changes.
