@@ -17,12 +17,24 @@ def test_register_first_user_requires_invite_code(client, register_user):
     res = register_user(email="admin@example.com", invite_code=None)
     assert res.status_code == 403
     assert res.json()["detail"] == "Invalid invite code"
-
-
-def test_register_rejects_wrong_invite_code(client, register_user, admin):
-    res = register_user(email="mallory@example.com", invite_code="wrong-code")
+    # A wrong code is just as fatal for the bootstrap account.
+    res = register_user(email="admin2@example.com", invite_code="wrong-code")
     assert res.status_code == 403
     assert res.json()["detail"] == "Invalid invite code"
+
+
+def test_later_signups_do_not_need_invite_code(client, register_user, admin):
+    res = register_user(email="bob@example.com", invite_code=None)
+    assert res.status_code == 201
+    body = res.json()
+    assert body["user"]["role"] == "user"  # not admin
+    assert body["user"]["status"] == "pending"
+    assert body["access_token"] is None
+
+    # Any code is fine once the first account exists — it is ignored.
+    res = register_user(email="carol@example.com", invite_code="wrong-code")
+    assert res.status_code == 201
+    assert res.json()["user"]["status"] == "pending"
 
 
 def test_register_second_user_is_pending(client, register_user, admin):

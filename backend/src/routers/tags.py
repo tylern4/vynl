@@ -1,8 +1,8 @@
-"""User tags: list/create, replace an album's tag set, delete (PLAN §5).
+"""Shared tags: list/create, replace an album's tag set, delete.
 
-Tags are per-user (``tags.user_id``) and stored lowercased/trimmed. The album
-tag-set endpoint lives here too: ``PUT /api/albums/{id}/tags`` has replace
-semantics and creates missing tags.
+Tags belong to the shared shelf (one ``name`` per shelf), stored
+lowercased/trimmed. The album tag-set endpoint lives here too:
+``PUT /api/albums/{id}/tags`` has replace semantics and creates missing tags.
 """
 
 from typing import Annotated
@@ -14,9 +14,9 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user, require_write
 from ..database import get_db
-from ..models import User, Tag, album_tags
+from ..models import Tag, User, album_tags
 from ..schemas import AlbumOut, AlbumTagsPut, TagCreate, TagOut, album_to_out
-from .albums import get_owned_album
+from .albums import get_shelf_album
 
 router = APIRouter(tags=["tags"])
 
@@ -46,9 +46,9 @@ def _normalize(raw: str) -> str:
     return name
 
 
-def _get_own_tag(db: Session, tag_id: int, user: User) -> Tag:
+def _get_tag(db: Session, tag_id: int) -> Tag:
     tag = db.get(Tag, tag_id)
-    if tag is None or tag.user_id != user.id:
+    if tag is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found"
         )
@@ -63,7 +63,6 @@ def list_tags(
     rows = db.execute(
         select(Tag, func.count(album_tags.c.album_id))
         .outerjoin(album_tags, album_tags.c.tag_id == Tag.id)
-        .where(Tag.user_id == current_user.id)
         .group_by(Tag.id)
         .order_by(Tag.name.asc())
     ).all()
@@ -78,20 +77,16 @@ def create_tag(
     db: Annotated[Session, Depends(get_db)],
 ):
     name = _normalize(payload.name)
-    existing = db.scalar(
-        select(Tag).where(Tag.user_id == current_user.id, Tag.name == name)
-    )
+    existing = db.scalar(select(Tag).where(Tag.name == name))
     if existing is not None:  # idempotent: existing name is returned as-is
         return _tag_out(db, existing)
-    tag = Tag(user_id=current_user.id, name=name)
+    tag = Tag(name=name)
     db.add(tag)
     try:
         db.commit()
     except IntegrityError:  # concurrent create of the same name
         db.rollback()
-        existing = db.scalar(
-            select(Tag).where(Tag.user_id == current_user.id, Tag.name == name)
-        )
+        existing = db.scalar(select(Tag).where(Tag.name == name))
         if existing is None:
             raise
         return _tag_out(db, existing)
@@ -107,7 +102,7 @@ def set_album_tags(
     current_user: Annotated[User, Depends(require_write)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    album = get_owned_album(db, album_id, current_user)
+    album = get_shelf_album(db, album_id)
     names: list[str] = []
     for raw in payload.tags:
         name = _normalize(raw)
@@ -115,11 +110,9 @@ def set_album_tags(
             names.append(name)
     tags: list[Tag] = []
     for name in names:
-        tag = db.scalar(
-            select(Tag).where(Tag.user_id == current_user.id, Tag.name == name)
-        )
+        tag = db.scalar(select(Tag).where(Tag.name == name))
         if tag is None:
-            tag = Tag(user_id=current_user.id, name=name)
+            tag = Tag(name=name)
             db.add(tag)
         tags.append(tag)
     album.tags = tags  # REPLACE semantics — drops anything not in payload
@@ -134,6 +127,6 @@ def delete_tag(
     current_user: Annotated[User, Depends(require_write)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    tag = _get_own_tag(db, tag_id, current_user)
+    tag = _get_tag(db, tag_id)
     db.delete(tag)  # album_tags links removed by FK cascade / ORM secondary
     db.commit()

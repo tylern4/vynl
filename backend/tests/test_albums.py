@@ -105,13 +105,11 @@ def add_tracks(db, album, *specs):
     db.commit()
 
 
-def attach_tags(db, album, *names, user_id):
+def attach_tags(db, album, *names):
     for name in names:
-        tag = db.scalar(
-            select(Tag).where(Tag.user_id == user_id, Tag.name == name)
-        )
+        tag = db.scalar(select(Tag).where(Tag.name == name))
         if tag is None:
-            tag = Tag(user_id=user_id, name=name)
+            tag = Tag(name=name)
             db.add(tag)
         if tag not in album.tags:
             album.tags.append(tag)
@@ -381,10 +379,11 @@ def test_import_requires_active_write_user(client, readonly_headers, mock_import
     assert "Read-only" in res.json()["detail"]
 
 
-def test_import_does_not_leak_other_users_shelves(
+def test_import_dedupes_across_users_shared_shelf(
     client, headers, other_user, db_session, mock_import, mock_artwork
 ):
-    """Soft-dedupe and hard-dedupe are per-user: same album in two shelves is OK."""
+    """The shelf is shared: importing the same provider release as another
+    user resolves to the existing album rather than creating a second copy."""
     mock_import.install()
     mock_artwork.install()
     payload = {"source": "deezer", "external_id": "302127"}
@@ -393,8 +392,9 @@ def test_import_does_not_leak_other_users_shelves(
         "/api/albums/import", json=payload, headers=other_user["headers"]
     )
     assert mine.status_code == 201
-    assert theirs.status_code == 201
-    assert mine.json()["id"] != theirs.json()["id"]
+    assert theirs.status_code == 409
+    assert str(mine.json()["id"]) in theirs.json()["detail"]
+    assert db_session.query(Album).count() == 1
 
 
 # --- import preview (issue #13) ---------------------------------------------
@@ -718,7 +718,7 @@ def test_list_empty(client, headers):
 
 def test_list_returns_tags_and_omits_tracks(client, headers, db_session, admin):
     album = make_album(db_session, admin["id"], title="Remain in Light")
-    attach_tags(db_session, album, "summer", "art-rock", user_id=admin["id"])
+    attach_tags(db_session, album, "summer", "art-rock")
     add_tracks(db_session, album, (1, "Track One", 100))
 
     res = client.get("/api/albums", headers=headers)
@@ -748,8 +748,8 @@ def test_list_tag_filter_single_and_all_of(
     a = make_album(db_session, admin["id"], title="A")
     b = make_album(db_session, admin["id"], title="B")
     c = make_album(db_session, admin["id"], title="C")
-    attach_tags(db_session, a, "chill", "summer", user_id=admin["id"])
-    attach_tags(db_session, b, "summer", user_id=admin["id"])
+    attach_tags(db_session, a, "chill", "summer")
+    attach_tags(db_session, b, "summer")
 
     res = client.get("/api/albums", params={"tag": "summer"}, headers=headers)
     assert sorted(x["title"] for x in res.json()) == ["A", "B"]
@@ -838,8 +838,8 @@ def test_list_rejects_bad_sort(client, headers):
     assert res.status_code == 422
 
 
-def test_list_excludes_other_users_albums(
-    client, headers, other_user, db_session
+def test_list_includes_albums_from_all_users(
+    client, headers, other_user, db_session, admin
 ):
     make_album(
         db_session,
@@ -847,10 +847,22 @@ def test_list_excludes_other_users_albums(
         title="Bobs Record",
         external_id="bob-1",
     )
+    make_album(
+        db_session,
+        admin["id"],
+        title="Admins Record",
+        external_id="admin-1",
+    )
     res = client.get("/api/albums", headers=headers)
-    assert res.json() == []
+    assert sorted(a["title"] for a in res.json()) == [
+        "Admins Record",
+        "Bobs Record",
+    ]
     res = client.get("/api/albums", headers=other_user["headers"])
-    assert [a["title"] for a in res.json()] == ["Bobs Record"]
+    assert sorted(a["title"] for a in res.json()) == [
+        "Admins Record",
+        "Bobs Record",
+    ]
 
 
 # --- detail ------------------------------------------------------------------
@@ -876,12 +888,13 @@ def test_detail_includes_tracks_sorted_by_position(
     assert body["tags"] == []
 
 
-def test_detail_404_for_missing_or_foreign_album(client, headers, other_user, db_session):
+def test_detail_404_for_missing_album(client, headers, other_user, db_session):
     assert client.get("/api/albums/999999", headers=headers).status_code == 404
-    theirs = make_album(db_session, other_user["id"])
-    assert (
-        client.get(f"/api/albums/{theirs.id}", headers=headers).status_code == 404
-    )
+    # Shared shelf: another user's album is fully visible.
+    theirs = make_album(db_session, other_user["id"], title="Bobs Record")
+    res = client.get(f"/api/albums/{theirs.id}", headers=headers)
+    assert res.status_code == 200
+    assert res.json()["title"] == "Bobs Record"
 
 
 # --- patch -------------------------------------------------------------------
@@ -948,18 +961,20 @@ def test_patch_rejects_null_favorite(client, headers, db_session, admin):
     assert res.status_code == 422
 
 
-def test_patch_404_foreign_and_missing(client, headers, other_user, db_session):
+def test_patch_404_for_missing_album(client, headers, other_user, db_session):
     assert (
         client.patch(
             "/api/albums/999999", json={"favorite": True}, headers=headers
         ).status_code
         == 404
     )
+    # Shared shelf: any write-capable user may edit another user's album.
     theirs = make_album(db_session, other_user["id"])
     res = client.patch(
         f"/api/albums/{theirs.id}", json={"favorite": True}, headers=headers
     )
-    assert res.status_code == 404
+    assert res.status_code == 200
+    assert res.json()["favorite"] is True
 
 
 def test_patch_forbidden_for_read_only(client, readonly_headers, db_session, admin):
@@ -979,7 +994,7 @@ def test_delete_cascades_and_removes_cached_cover(
     album = make_album(db_session, admin["id"], cover_path="42.jpg")
     album_id = album.id
     add_tracks(db_session, album, (1, "One", 100))
-    attach_tags(db_session, album, "chill", user_id=admin["id"])
+    attach_tags(db_session, album, "chill")
     db_session.add(Play(album_id=album.id, user_id=admin["id"]))
     db_session.commit()
     cached = cover_root / "42.jpg"
@@ -997,12 +1012,14 @@ def test_delete_cascades_and_removes_cached_cover(
     assert not cached.exists()  # best-effort cover cleanup
 
 
-def test_delete_404_foreign(client, headers, other_user, db_session):
-    theirs = make_album(db_session, other_user["id"])
+def test_delete_shared_album_from_any_account(client, headers, other_user, db_session):
+    theirs = make_album(db_session, other_user["id"], title="Bobs Record")
+    res = client.delete(f"/api/albums/{theirs.id}", headers=headers)
+    assert res.status_code == 204
+    assert db_session.get(Album, theirs.id) is None  # gone from the shared shelf
     assert (
-        client.delete(f"/api/albums/{theirs.id}", headers=headers).status_code == 404
+        client.get("/api/albums", headers=other_user["headers"]).json() == []
     )
-    assert db_session.get(Album, theirs.id) is not None  # untouched
 
 
 def test_delete_forbidden_for_read_only(client, readonly_headers, db_session, admin):
@@ -1039,13 +1056,14 @@ def test_cover_404_when_file_missing(client, headers, db_session, admin, cover_r
     assert res.status_code == 404
 
 
-def test_cover_404_for_foreign_album(
+def test_cover_serves_shared_album_from_any_account(
     client, headers, other_user, db_session, cover_root
 ):
     theirs = make_album(db_session, other_user["id"], cover_path="9.jpg")
     (cover_root / "9.jpg").write_bytes(JPEG_MAGIC)
     res = client.get(f"/api/albums/{theirs.id}/cover", headers=headers)
-    assert res.status_code == 404
+    assert res.status_code == 200
+    assert res.content == JPEG_MAGIC
 
 
 def test_cover_path_traversal_is_blocked(
@@ -1283,7 +1301,7 @@ def test_manual_duplicate_soft_dedupe_is_409(client, headers):
     assert str(first["id"]) in res.json()["detail"]
 
 
-def test_manual_duplicate_is_per_user(client, headers, other_user):
+def test_manual_duplicate_is_shared(client, headers, other_user):
     mine = client.post(
         "/api/albums/manual",
         json={"title": "Midnight Crush", "artist": "Tokyo Heartbeat"},
@@ -1295,8 +1313,8 @@ def test_manual_duplicate_is_per_user(client, headers, other_user):
         headers=other_user["headers"],
     )
     assert mine.status_code == 201
-    assert theirs.status_code == 201
-    assert mine.json()["id"] != theirs.json()["id"]
+    assert theirs.status_code == 409
+    assert str(mine.json()["id"]) in theirs.json()["detail"]
 
 
 @pytest.mark.parametrize(
@@ -1506,14 +1524,17 @@ def test_cover_upload_works_for_imported_album(
     assert served.content == PNG_BYTES
 
 
-def test_cover_upload_404_foreign(client, headers, other_user, db_session):
+def test_cover_upload_works_on_shared_album(
+    client, headers, other_user, db_session, cover_root
+):
     theirs = make_album(db_session, other_user["id"], title="Bobs Record")
     res = client.put(
         f"/api/albums/{theirs.id}/cover",
         files={"file": ("cover.jpg", JPEG_MAGIC, "image/jpeg")},
         headers=headers,
     )
-    assert res.status_code == 404
+    assert res.status_code == 200, res.text
+    assert (cover_root / f"{theirs.id}.jpg").read_bytes() == JPEG_MAGIC
 
 
 def test_cover_upload_404_missing(client, headers):

@@ -56,10 +56,10 @@ def make_album(db, user_id, *, title=None, last_played_at=None, **fields):
     return album
 
 
-def attach_tag(db, album, name, user_id):
-    tag = db.scalar(select(Tag).where(Tag.user_id == user_id, Tag.name == name))
+def attach_tag(db, album, name):
+    tag = db.scalar(select(Tag).where(Tag.name == name))
     if tag is None:
-        tag = Tag(user_id=user_id, name=name)
+        tag = Tag(name=name)
         db.add(tag)
     album.tags.append(tag)
     db.commit()
@@ -232,7 +232,7 @@ def test_tag_filter_applies_in_both_modes(client, headers, db_session, admin):
         make_album(db_session, admin["id"]) for _ in range(3)
     ]
     for album in tagged:
-        attach_tag(db_session, album, "chill", admin["id"])
+        attach_tag(db_session, album, "chill")
     for _ in range(3):
         make_album(db_session, admin["id"])  # untagged
     use_seeded_rng(4)
@@ -323,9 +323,10 @@ def test_seeded_rng_is_deterministic(client, headers, db_session, admin):
 # --- ownership scoping -------------------------------------------------------
 
 
-def test_only_recommends_own_shelf(client, headers, other_user, db_session):
-    make_album(db_session, other_user["id"], last_played_at=None)
+def test_recommends_from_shared_shelf(client, headers, other_user, db_session):
+    theirs = make_album(db_session, other_user["id"], last_played_at=None)
+    # The shared shelf means every user recommends from the same pool.
     res = client.get("/api/recommendations", headers=headers)
-    assert res.json() == []
+    assert [p["album"]["id"] for p in res.json()] == [theirs.id]
     res = client.get("/api/recommendations", headers=other_user["headers"])
-    assert len(res.json()) == 1
+    assert [p["album"]["id"] for p in res.json()] == [theirs.id]

@@ -24,5 +24,6 @@ the coordinator commits.
 | 11 | [Manual album entry + cover upload / camera](docs/issues/011-manual-album-entry.md) | done | 3, 5 (after 10) | feature | agent-manual-11 |
 | 12 | [More music providers — iTunes (multi-country) + Discogs](docs/issues/012-more-music-providers.md) | done | 2, 3 (after 10, 11) | feature | agent-providers-12 |
 | 13 | [Import preview — click a search result to see what will be imported](docs/issues/013-import-preview.md) | done | 3, 5 (after 10, before 12) | feature | agent-preview-13 |
+| 14 | [Shared shelf + open registration](docs/issues/014-shared-shelf.md) | done | 9 | follow-up | coordinator |
 
 Statuses: `open` → `in progress` → `done` (or `blocked` with a note).

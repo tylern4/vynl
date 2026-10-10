@@ -1,8 +1,9 @@
 """Collection CRUD: import, list/detail/update/delete, cover, play logging.
 
-Ownership: every endpoint is scoped to ``current_user.id`` — another user's
-album is indistinguishable from a missing one (404). Write endpoints go
-through #1's ``require_write`` so read-only accounts can't mutate the shelf.
+The shelf is shared: every authenticated user sees and manages the same
+collection, so endpoints are not scoped by owner. ``album.user_id`` is kept
+only as attribution. Write endpoints go through #1's ``require_write`` so
+read-only accounts can't mutate the shelf.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -69,10 +70,10 @@ async def read_cover_bytes(file: UploadFile) -> bytes | None:
     return b"".join(chunks)
 
 
-def get_owned_album(db: Session, album_id: int, user: User) -> Album:
-    """Fetch an album owned by ``user`` or 404 (also used by routers/tags.py)."""
-    album = db.scalar(select(Album).where(Album.id == album_id))
-    if album is None or album.user_id != user.id:
+def get_shelf_album(db: Session, album_id: int) -> Album:
+    """Fetch an album from the shared shelf or 404 (also used by tags.py)."""
+    album = db.get(Album, album_id)
+    if album is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Album not found"
         )
@@ -81,17 +82,15 @@ def get_owned_album(db: Session, album_id: int, user: User) -> Album:
 
 def _find_duplicate(
     db: Session,
-    user_id: int,
     source: str,
     external_id: str,
     title: str | None,
     artist: str | None,
 ) -> Album | None:
-    """Hard dedupe on (user, source, external_id) + soft dedupe on
-    (user, lower(title), lower(artist)) — PLAN §6 import rules."""
+    """Hard dedupe on (source, external_id) + soft dedupe on
+    (lower(title), lower(artist)) — the shelf is shared, so dedupe is global."""
     existing = db.scalar(
         select(Album).where(
-            Album.user_id == user_id,
             Album.source == source,
             Album.external_id == external_id,
         )
@@ -101,7 +100,6 @@ def _find_duplicate(
     if title is not None and artist is not None:
         existing = db.scalar(
             select(Album).where(
-                Album.user_id == user_id,
                 func.lower(func.trim(Album.title)) == title.strip().lower(),
                 func.lower(func.trim(Album.artist)) == artist.strip().lower(),
             )
@@ -112,7 +110,7 @@ def _find_duplicate(
 def _conflict(existing: Album) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_409_CONFLICT,
-        detail=f"Album already in your shelf (id={existing.id})",
+        detail=f"Album is already on the shelf (id={existing.id})",
     )
 
 
@@ -180,7 +178,7 @@ def import_album(
     db: Annotated[Session, Depends(get_db)],
 ):
     existing = _find_duplicate(
-        db, current_user.id, payload.source, payload.external_id, None, None
+        db, payload.source, payload.external_id, None, None
     )
     if existing is not None:
         raise _conflict(existing)
@@ -199,7 +197,7 @@ def import_album(
         )
 
     existing = _find_duplicate(
-        db, current_user.id, payload.source, payload.external_id,
+        db, payload.source, payload.external_id,
         imported.title, imported.artist,
     )
     if existing is not None:
@@ -214,7 +212,7 @@ def import_album(
         metadata["discogs_id"] = imported.discogs_id
 
     album = Album(
-        user_id=current_user.id,
+        user_id=current_user.id,  # attribution only; the shelf is shared
         title=imported.title,
         artist=imported.artist,
         year=imported.year,
@@ -246,7 +244,7 @@ def import_album(
         # A concurrent import raced us: 409 if we can see the winner, else the
         # IntegrityError was something else (e.g. duplicate track positions).
         existing = _find_duplicate(
-            db, current_user.id, payload.source, payload.external_id,
+            db, payload.source, payload.external_id,
             imported.title, imported.artist,
         )
         if existing is not None:
@@ -278,15 +276,14 @@ def create_manual_album(
     tracklist, with no provider involved. Nothing is fetched at creation —
     ``cover_url``/``cover_path`` stay null until the user uploads artwork.
 
-    ``source="manual"`` + a fresh ``uuid4().hex`` satisfies the
-    ``(user_id, source, external_id)`` unique constraint. Soft-dedupes exactly
-    like import: ``(user_id, lower(trim(title)), lower(trim(artist)))`` → 409.
+    ``source="manual"`` + a fresh ``uuid4().hex`` satisfies the global
+    ``(source, external_id)`` unique constraint. Soft-dedupes exactly
+    like import: ``(lower(trim(title)), lower(trim(artist)))`` → 409.
     """
     title = payload.title.strip()
     artist = payload.artist.strip()
     existing = db.scalar(
         select(Album).where(
-            Album.user_id == current_user.id,
             func.lower(func.trim(Album.title)) == title.lower(),
             func.lower(func.trim(Album.artist)) == artist.lower(),
         )
@@ -295,7 +292,7 @@ def create_manual_album(
         raise _conflict(existing)
 
     album = Album(
-        user_id=current_user.id,
+        user_id=current_user.id,  # attribution only; the shelf is shared
         title=title,
         artist=artist,
         year=payload.year,
@@ -350,7 +347,6 @@ def list_albums(
 
     stmt = (
         select(Album)
-        .where(Album.user_id == current_user.id)
         .options(selectinload(Album.tags))
     )
     if q:
@@ -365,7 +361,7 @@ def list_albums(
             link = (
                 select(album_tags.c.album_id)
                 .join(Tag, Tag.id == album_tags.c.tag_id)
-                .where(Tag.user_id == current_user.id, Tag.name.in_(names))
+                .where(Tag.name.in_(names))
                 .group_by(album_tags.c.album_id)
                 .having(func.count(func.distinct(Tag.name)) == len(names))
             )
@@ -394,7 +390,7 @@ def get_album(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    album = get_owned_album(db, album_id, current_user)
+    album = get_shelf_album(db, album_id)
     return album_to_out(album, tracks=album.tracks)
 
 
@@ -405,7 +401,7 @@ def update_album(
     current_user: Annotated[User, Depends(require_write)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    album = get_owned_album(db, album_id, current_user)
+    album = get_shelf_album(db, album_id)
     provided = payload.model_fields_set
     if "favorite" in provided:
         if payload.favorite is None:
@@ -431,7 +427,7 @@ def delete_album(
     current_user: Annotated[User, Depends(require_write)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    album = get_owned_album(db, album_id, current_user)
+    album = get_shelf_album(db, album_id)
     cached = artwork.resolve_cover_file(album.cover_path)
     db.delete(album)  # tracks / album_tags / plays cascade at the DB level
     db.commit()
@@ -448,7 +444,7 @@ def get_cover(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    album = get_owned_album(db, album_id, current_user)
+    album = get_shelf_album(db, album_id)
     path = artwork.resolve_cover_file(album.cover_path)
     if path is None:
         raise HTTPException(
@@ -488,7 +484,7 @@ async def upload_cover(
                 f"(max {artwork.MAX_COVER_BYTES // (1024 * 1024)} MB)"
             ),
         )
-    album = get_owned_album(db, album_id, current_user)
+    album = get_shelf_album(db, album_id)
     if not data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="No image data provided"
@@ -521,7 +517,7 @@ def log_play(
     db: Annotated[Session, Depends(get_db)],
     payload: Annotated[PlayCreate | None, Body()] = None,
 ):
-    album = get_owned_album(db, album_id, current_user)
+    album = get_shelf_album(db, album_id)
     played_at = payload.played_at if payload and payload.played_at else None
     if played_at is None:
         played_at = datetime.now(timezone.utc)
@@ -548,7 +544,7 @@ def list_plays(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    album = get_owned_album(db, album_id, current_user)
+    album = get_shelf_album(db, album_id)
     return db.scalars(
         select(Play)
         .where(Play.album_id == album.id)
@@ -563,7 +559,7 @@ def delete_play(
     current_user: Annotated[User, Depends(require_write)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    album = get_owned_album(db, album_id, current_user)
+    album = get_shelf_album(db, album_id)
     play = db.get(Play, play_id)
     if play is None or play.album_id != album.id:
         raise HTTPException(

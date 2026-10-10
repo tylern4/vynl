@@ -893,3 +893,32 @@ shipped, decisions made, anything the next agent needs to know.
   asserting the apex is the lowest point → frontend **164 passed** (was 163).
   Live-verified `vPointsDown: true` on the rebuilt container and re-captured the
   README screenshots; demo seed cleaned up again.
+
+## 2026-10-10 — Issue #14 shared shelf + open registration — coordinator
+
+- **Shared shelf:** the collection is now one shelf for every active user, not
+  per-user shelves. `albums.user_id` is attribution-only; ownership-404s removed
+  from every collection route (list/detail/patch/delete/cover, plays, tag
+  replace/delete, track search, recommendations). Dedupe is global — hard on
+  `(source, external_id)`, soft on `(lower(title), lower(artist))` → 409
+  `"Album is already on the shelf (id=N)"`. Tags are global too: `tags.user_id`
+  dropped, one `name` per shelf.
+- **Open registration:** the invite code now bootstraps the instance — required
+  only for the very first account (the `admin`+`active` one); later signups
+  register freely and land `pending` until approved (#9 admin UI). Frontend
+  Register already labelled the field "Setup code (first account only)" — no
+  client change.
+- **Migration `0002_shared_shelf.py`:** collapses cross-user duplicate albums
+  and duplicate tag names (earliest id wins; `album_tags` links repointed at the
+  surviving tag before the old rows are deleted), then swaps in
+  `uq_albums_source_external` / `uq_tags_name`. `alembic check` clean; verified
+  on a scratch DB (upgrade 0001→0002 + drift check).
+- **Test-suite fix (unrelated env leak):** with a real `DISCOGS_TOKEN` in the
+  local `.env`, 8 provider tests failed because they assume Discogs is disabled
+  (the CI/code default). `tests/test_providers.py` `_provider_env` now neutralizes
+  ambient provider config (`discogs_token=""`, `itunes_countries="US,JP,GB"`);
+  Discogs-enabled tests opt in via `_enable_discogs`.
+- **Verification at commit:** backend **251 passed**, frontend **164 passed**,
+  `npm run build` ✓. PLAN §4/§5/§6 + ISSUES.md updated; issue #14 marked done.
+  Note: PLAN's raw-bytes-PUT cover-upload text still reflects pre-multipart #11 —
+  left as a known doc drift.

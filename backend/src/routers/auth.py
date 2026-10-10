@@ -20,11 +20,14 @@ def register(payload: RegisterRequest, db: Annotated[Session, Depends(get_db)]):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="An account with that email already exists"
         )
-    if payload.invite_code != settings.invite_code:
+    # The invite code bootstraps the instance: it is required only to create
+    # the very first account (which becomes admin+active). Later sign-ups
+    # register freely and land in `pending` until an admin approves them.
+    is_first = (db.scalar(select(func.count(User.id))) or 0) == 0
+    if is_first and payload.invite_code != settings.invite_code:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Invalid invite code"
         )
-    is_first = (db.scalar(select(func.count(User.id))) or 0) == 0
     user = User(
         name=payload.name.strip(),
         email=payload.email.lower(),

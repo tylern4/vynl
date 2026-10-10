@@ -27,8 +27,8 @@ implementation needs to deviate, update this file in the same change and note it
 - No audio playback or streaming integration.
 - No Discogs/Spotify auth flows (both APIs need tokens; can be added later behind the
   provider interface).
-- No multi-collection / wantlist split — one shelf per user for now (a `wantlist`
-  column can come later).
+- No multi-collection / wantlist split — one **shared** shelf for every approved
+  user (a `wantlist` column can come later; see issue #14).
 - No mobile app; the frontend is responsive and works in a phone browser.
 
 ---
@@ -124,13 +124,13 @@ mirroring the reference project's conventions.
 | column | type | notes |
 | --- | --- | --- |
 | id | int PK | |
-| user_id | int FK users.id ON DELETE SET NULL, idx | owner |
+| user_id | int FK users.id ON DELETE SET NULL, idx | attribution only — the shelf is shared (issue #14) |
 | title | varchar(500) idx | album title |
 | artist | varchar(500) idx | primary artist credit |
 | year | int nullable | release year |
 | label | varchar(255) nullable | record label |
 | country | varchar(8) nullable | ISO country from source |
-| source | varchar(20) | `deezer` \| `musicbrainz` \| `manual` (issue #11) |
+| source | varchar(20) | `deezer` \| `musicbrainz` \| `itunes` \| `discogs` \| `manual` (issues #11, #12) |
 | external_id | varchar(64) | source id: Deezer album id or MBID |
 | musicbrainz_release_group_id | varchar(36) nullable idx | set when known |
 | deezer_id | bigint nullable | set when known |
@@ -143,9 +143,9 @@ mirroring the reference project's conventions.
 | metadata | JSONB default `{}` | genres, mbid extras, source payload subset |
 | created_at / updated_at | timestamptz | |
 
-Indexes: `(user_id, lower(title))`-style lookup is done with ILIKE in queries;
-unique constraint on `(user_id, source, external_id)` prevents double import from the
-same source. Cross-source dedupe happens at import time (see §6).
+Lookups are ILIKE-based in queries; unique constraint on `(source, external_id)`
+prevents double import of the same release into the shared shelf (issue #14).
+Cross-source dedupe happens at import time (see §6).
 
 ### `tracks`
 
@@ -163,9 +163,8 @@ same source. Cross-source dedupe happens at import time (see §6).
 | column | type | notes |
 | --- | --- | --- |
 | id | int PK | |
-| user_id | int FK users.id ON DELETE CASCADE, idx | tags are per-user |
 | name | varchar(60) | stored lowercased/trimmed |
-| unique | (user_id, name) | |
+| unique | (name) | tags are global to the shared shelf (issue #14) |
 
 ### `album_tags`
 
@@ -199,7 +198,7 @@ reference: bcrypt hashes, HS256 tokens, `HTTPBearer`). All endpoints except
 
 | Method & path | Body | Response |
 | --- | --- | --- |
-| `POST /api/auth/register` | `{name, email, password, invite_code}` | `{user, access_token?}` — first user becomes `admin`+`active`, later signups `pending` until approved; registration still requires the invite code (#9 keeps the `pending` flow but adds the admin UI below) |
+| `POST /api/auth/register` | `{name, email, password, invite_code?}` | `{user, access_token?}` — the **first** account becomes `admin`+`active`; the invite code is required only for that bootstrap account. Later signups register freely (no code needed) and land `pending` until approved (#9 admin flow) |
 | `POST /api/auth/login` | `{email, password}` | `{access_token, token_type, user}` |
 | `GET /api/auth/me` | — | `UserOut` |
 | `GET /api/users` | admin only | `UserAdminOut[]` (ordered by `created_at`) |
@@ -250,7 +249,7 @@ install.
 
 | Method & path | Body | Response |
 | --- | --- | --- |
-| `POST /api/albums/import` | `{source, external_id}` | `AlbumOut` (201; **409** if already in the user's shelf) |
+| `POST /api/albums/import` | `{source, external_id}` | `AlbumOut` (201; **409** if the release is already on the shared shelf) |
 | `POST /api/albums/manual` | `ManualAlbumInput` | `AlbumOut` (201; **409** on soft-dupe, **422** on invalid fields; issue #11) |
 | `POST /api/albums/preview` | `{source, external_id}` | `AlbumPreviewOut` — a **dry-run** of import: same assembly code path (incl. twin discovery), but **no album row is created and no 409 is raised** (works for albums already on the shelf); `NotFound` → 404, other provider errors → 502, exactly like import (issue #13) |
 | `GET /api/albums` | `q`, `tag`, `favorite`, `sort` (`added`\|`title`\|`artist`\|`year`\|`played`), `limit`, `offset` | `AlbumOut[]` (without tracks) |
@@ -274,11 +273,11 @@ install.
 ```
 
 The manual album persists `source="manual"` with `external_id` = a fresh
-`uuid4().hex` (satisfies the `(user_id, source, external_id)` unique constraint),
+`uuid4().hex` (satisfies the global `(source, external_id)` unique constraint),
 `cover_url`/`cover_path` null until the user uploads art, and `metadata_={}`.
 Creation soft-dedupes exactly like import —
-`(user_id, lower(trim(title)), lower(trim(artist)))` already present → **409**
-`"Album already in your shelf (id=N)"`. Validation is 422: blank/whitespace
+`(lower(trim(title)), lower(trim(artist)))` already on the shelf → **409**
+`"Album is already on the shelf (id=N)"`. Validation is 422: blank/whitespace
 title/artist, blank track title, negative `duration_seconds`, year outside
 1000…now+1.
 
@@ -288,7 +287,7 @@ by magic bytes (`services.artwork.sniff_image`), so `python-multipart` is never
 needed. The frontend normalizes the pick to a ≤ ~2000 px JPEG (HEIC-safe) before
 uploading; the backend replaces any previously stored `{album_id}.*` file (extension
 may differ) and returns 400 — never 500 — for empty / > 15 MB / non-image bytes. Works
-for any owned album (manual or imported).
+for any album on the shared shelf (manual or imported).
 
 ```jsonc
 // AlbumOut (list variant: tracks omitted or empty)
@@ -507,9 +506,10 @@ behavior is unchanged (it still reads only `.tracks`).
    Archive artwork is consulted last).
 2. Artwork: Deezer `cover_xl` → iTunes 600 px → Discogs ≥ 300 px full image → CAA
    → none.
-3. Duplicate check: `(user_id, source, external_id)` unique constraint **and**
-   soft-dedupe on `(user_id, lower(title), lower(artist))` → 409 with the existing
-   album id in the detail.
+3. Duplicate check: `(source, external_id)` unique constraint **and** soft-dedupe
+   on `(lower(title), lower(artist))` — both are global to the shared shelf (issue
+   #14), so a second user importing the same release resolves to the existing
+   album → 409 with its id in the detail.
 4. The wire body carries a single `external_id` (§5), so "both ids known" means
    `import_album` resolved the counterpart id itself: it searches the *other*
    providers by normalized artist + title (year ± 1) and adopts a confident

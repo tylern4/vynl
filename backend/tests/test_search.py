@@ -300,13 +300,14 @@ def test_tracks_ordered_artist_album_position(client, headers, db_session, admin
     ]
 
 
-def test_tracks_scoped_to_current_user(client, headers, other_user, db_session):
+def test_tracks_search_the_shared_shelf(client, headers, other_user, db_session):
     theirs = make_album(
         db_session, other_user["id"], title="Bobs", artist="Bobby Blue"
     )
     add_tracks(db_session, theirs, (1, "Secret Song", 100))
+    # The shelf is shared, so every account searches the same tracks.
     res = client.get("/api/tracks", params={"q": "secret"}, headers=headers)
-    assert res.json() == []
+    assert [t["title"] for t in res.json()] == ["Secret Song"]
     res = client.get(
         "/api/tracks", params={"q": "secret"}, headers=other_user["headers"]
     )

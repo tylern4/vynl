@@ -63,9 +63,6 @@ class User(Base):
     albums: Mapped[list["Album"]] = relationship(
         back_populates="user", passive_deletes=True
     )
-    tags: Mapped[list["Tag"]] = relationship(
-        back_populates="user", passive_deletes=True
-    )
     plays: Mapped[list["Play"]] = relationship(
         back_populates="user", passive_deletes=True
     )
@@ -74,9 +71,9 @@ class User(Base):
 class Album(Base):
     __tablename__ = "albums"
     __table_args__ = (
-        UniqueConstraint(
-            "user_id", "source", "external_id", name="uq_albums_user_source_external"
-        ),
+        # The shelf is shared, so provider identity dedupes globally. ``user_id``
+        # is kept only as attribution ("who added it"), never for scoping.
+        UniqueConstraint("source", "external_id", name="uq_albums_source_external"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -146,16 +143,13 @@ class Track(Base):
 class Tag(Base):
     __tablename__ = "tags"
     __table_args__ = (
-        UniqueConstraint("user_id", "name", name="uq_tags_user_name"),
+        # Shared-shelf tags are global: a name exists once for the whole shelf.
+        UniqueConstraint("name", name="uq_tags_name"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True
-    )
     name: Mapped[str] = mapped_column(String(60))
 
-    user: Mapped[User] = relationship(back_populates="tags")
     albums: Mapped[list[Album]] = relationship(
         secondary=album_tags, back_populates="tags", passive_deletes=True
     )

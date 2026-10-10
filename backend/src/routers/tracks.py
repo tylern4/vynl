@@ -1,4 +1,4 @@
-"""Library song search: ILIKE across track/album/artist for the user (PLAN §5)."""
+"""Library song search: ILIKE across track/album/artist over the shared shelf."""
 
 from typing import Annotated
 
@@ -26,7 +26,6 @@ def search_tracks(
         select(Track, Album)
         .join(Album, Track.album_id == Album.id)
         .where(
-            Album.user_id == current_user.id,
             or_(
                 Track.title.ilike(pattern),
                 Album.title.ilike(pattern),

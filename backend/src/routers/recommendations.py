@@ -35,11 +35,10 @@ def get_rng() -> random.Random:
 
 
 def _candidates(
-    db: Session, user: User, tag: str | None
+    db: Session, tag: str | None
 ) -> list[Album]:
     stmt = (
         select(Album)
-        .where(Album.user_id == user.id)
         .options(selectinload(Album.tags))
         .order_by(  # COALESCE(last_played_at, '-infinity'), id breaks never-played ties
             Album.last_played_at.asc().nulls_first(), Album.id.asc()
@@ -51,7 +50,7 @@ def _candidates(
             link = (
                 select(album_tags.c.album_id)
                 .join(Tag, Tag.id == album_tags.c.tag_id)
-                .where(Tag.user_id == user.id, Tag.name == name)
+                .where(Tag.name == name)
             )
             stmt = stmt.where(Album.id.in_(link))
     return list(db.scalars(stmt).all())
@@ -109,7 +108,7 @@ def recommendations(
     n: int = 1,
 ):
     n = max(1, min(20, n))  # clamp 1–20
-    albums = _candidates(db, current_user, tag)
+    albums = _candidates(db, tag)
     if mode == "random":
         picks = rng.sample(albums, k=min(n, len(albums)))
     else:

@@ -162,12 +162,13 @@ def test_log_play_accepts_naive_datetime_as_utc(client, headers, db_session, adm
     assert res.json()["last_played_at"].startswith("2020-05-05")
 
 
-def test_log_play_404_foreign_album(client, headers, other_user, db_session):
-    theirs = make_album(db_session, other_user["id"])
+def test_log_and_list_play_on_shared_album(client, headers, other_user, db_session):
+    theirs = make_album(db_session, other_user["id"], title="Bobs Record")
     res = client.post(f"/api/albums/{theirs.id}/plays", headers=headers)
-    assert res.status_code == 404
+    assert res.status_code == 201
     res = client.get(f"/api/albums/{theirs.id}/plays", headers=headers)
-    assert res.status_code == 404
+    assert res.status_code == 200
+    assert len(res.json()) == 1  # the shared play is visible to everyone
 
 
 def test_log_play_forbidden_for_read_only(
@@ -259,7 +260,7 @@ def test_delete_play_404_when_play_belongs_to_other_album(
     assert len(client.get(f"/api/albums/{b.id}/plays", headers=headers).json()) == 1
 
 
-def test_delete_play_404_foreign_album(
+def test_delete_play_on_shared_album_from_any_account(
     client, headers, other_user, db_session
 ):
     theirs = make_album(db_session, other_user["id"])
@@ -267,11 +268,15 @@ def test_delete_play_404_foreign_album(
     theirs_play_id = client.get(
         f"/api/albums/{theirs.id}/plays", headers=other_user["headers"]
     ).json()[0]["id"]
+    res = client.delete(
+        f"/api/albums/{theirs.id}/plays/{theirs_play_id}", headers=headers
+    )
+    assert res.status_code == 204
     assert (
-        client.delete(
-            f"/api/albums/{theirs.id}/plays/{theirs_play_id}", headers=headers
-        ).status_code
-        == 404
+        client.get(
+            f"/api/albums/{theirs.id}/plays", headers=other_user["headers"]
+        ).json()
+        == []
     )
 
 

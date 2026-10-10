@@ -117,20 +117,19 @@ def test_get_tags_counts_linked_albums(client, headers, db_session, admin):
     }
 
 
-def test_tags_are_per_user(client, headers, other_user):
+def test_tags_are_shared_across_users(client, headers, other_user):
     mine = client.post("/api/tags", json={"name": "chill"}, headers=headers)
     theirs = client.post(
         "/api/tags", json={"name": "chill"}, headers=other_user["headers"]
     )
     assert mine.status_code == 201
-    assert theirs.status_code == 201
-    assert mine.json()["id"] != theirs.json()["id"]
-    assert [t["name"] for t in client.get("/api/tags", headers=headers).json()] == [
-        "chill"
-    ]
-    assert [
-        t["name"] for t in client.get("/api/tags", headers=other_user["headers"]).json()
-    ] == ["chill"]
+    assert theirs.status_code == 200  # exists once on the shared shelf
+    assert theirs.json()["id"] == mine.json()["id"]
+    # Both users see the same global tag list.
+    for h in (headers, other_user["headers"]):
+        assert [
+            t["name"] for t in client.get("/api/tags", headers=h).json()
+        ] == ["chill"]
 
 
 def test_create_tag_forbidden_for_read_only(client, readonly_headers):
@@ -213,12 +212,13 @@ def test_put_tags_rejects_empty_entry(client, headers, db_session, admin):
     assert client.put(url, json={"tags": ["  "]}, headers=headers).status_code == 422
 
 
-def test_put_tags_404_foreign_album(client, headers, other_user, db_session):
-    theirs = make_album(db_session, other_user["id"])
+def test_put_tags_works_on_shared_album(client, headers, other_user, db_session):
+    theirs = make_album(db_session, other_user["id"], title="Bobs Record")
     res = client.put(
         f"/api/albums/{theirs.id}/tags", json={"tags": ["x"]}, headers=headers
     )
-    assert res.status_code == 404
+    assert res.status_code == 200
+    assert res.json()["tags"] == ["x"]
 
 
 def test_put_tags_forbidden_for_read_only(client, readonly_headers, db_session, admin):
@@ -251,15 +251,14 @@ def test_delete_tag_everywhere(client, headers, db_session, admin):
     assert db_session.get(Tag, tag_id) is None
 
 
-def test_delete_tag_404_foreign(client, headers, other_user):
+def test_delete_tag_works_for_any_user(client, headers, other_user):
     theirs = client.post(
         "/api/tags", json={"name": "bobs"}, headers=other_user["headers"]
     ).json()
-    assert client.delete(f"/api/tags/{theirs['id']}", headers=headers).status_code == 404
     assert (
-        client.get("/api/tags", headers=other_user["headers"]).json()[0]["name"]
-        == "bobs"
+        client.delete(f"/api/tags/{theirs['id']}", headers=headers).status_code == 204
     )
+    assert client.get("/api/tags", headers=other_user["headers"]).json() == []
 
 
 def test_delete_tag_requires_auth(client, admin):
