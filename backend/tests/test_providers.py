@@ -123,7 +123,12 @@ def _clean_tables():
 @pytest.fixture(autouse=True)
 def _provider_env(monkeypatch):
     """Reset the HTTP seam; make every provider's throttle instant between
-    tests (MB/Deezer/iTunes spacing guards and Discogs' backoff)."""
+    tests (MB/Deezer/iTunes spacing guards and Discogs' backoff).
+
+    Also neutralize provider secrets from the ambient ``.env`` so the suite is
+    deterministic: Discogs starts disabled (tests that exercise it call
+    ``_enable_discogs`` explicitly) and iTunes storefronts fall back to the
+    code default."""
     monkeypatch.setattr(musicbrainz, "_MIN_INTERVAL", 0.0)
     monkeypatch.setattr(musicbrainz, "_next_slot", 0.0)
     monkeypatch.setattr(itunes, "_MIN_INTERVAL", 0.0)
@@ -131,6 +136,8 @@ def _provider_env(monkeypatch):
     monkeypatch.setattr(discogs, "_MIN_INTERVAL", 0.0)
     monkeypatch.setattr(discogs, "_next_slot", 0.0)
     monkeypatch.setattr(discogs, "_BACKOFF_BASE", 0.0)
+    monkeypatch.setattr(settings, "discogs_token", "")
+    monkeypatch.setattr(settings, "itunes_countries", "US,JP,GB")
     set_client(None)
     yield
     set_client(None)
