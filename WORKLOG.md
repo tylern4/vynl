@@ -938,3 +938,31 @@ shipped, decisions made, anything the next agent needs to know.
   with the repo `.env` token both work).
 - Committed alongside the #14 work; the full smoke script still runs locally only
   (never CI).
+
+## 2026-10-10 — quickstart.sh --update (one-command updater) — coordinator
+
+- New `-u/--update` mode in `scripts/quickstart.sh` for existing installs: keeps
+  the current `.env` byte-for-byte untouched, runs `git pull --ff-only`,
+  `docker compose build --pull`, recreates the stack (`docker compose up -d`),
+  waits for the backend health check, and confirms the DB is migrated. Extra
+  flags: `--no-pull` (skip git pull), `--no-start` (pull + build only, don't
+  touch the stack), reusing the existing `-y/--yes` and `-h/--help`.
+- Health wait resolves the published backend port via `docker port` (+`docker
+  compose ps -q backend`) and curls `/api/health` on a 2 s cadence
+  (`QUICKSTART_UPDATE_TIMEOUT`, default 60 s) — skipped gracefully when curl is
+  missing or no port is published. Migrations are run by the backend at startup;
+  the script then confirms head with `docker compose exec -T backend alembic
+  upgrade head` (idempotent no-op when already current).
+- Behavior rules: refuses cleanly when `.env` is missing ("run the quickstart
+  first"); skips pull with a warning on non-git checkouts; aborts before
+  touching the stack if `git pull` fails; per-step `confirm_yes` prompts
+  (default yes) in interactive mode, while non-interactive runs carry out every
+  step (each independently skippable via `--no-pull`/`--no-start`).
+- Verified with a scripted harness (fake `docker` shim + a real throwaway git
+  remote/clone in `/tmp/opencode/qs-test`): pull fast-forward advance, build →
+  up → health-warn path (dead port), happy path against a stub `/api/health`
+  (healthy → migration confirmation exec), `--no-pull --no-start`, non-git
+  checkout, and the missing-`.env` error — all exit 0. `bash -n` clean.
+- README "Updating to the latest version" rewritten around
+  `scripts/quickstart.sh --update` (script first, the manual `git pull && docker
+  compose up --build -d` recipe kept behind it).

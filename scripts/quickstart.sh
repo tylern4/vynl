@@ -1,25 +1,40 @@
 #!/usr/bin/env bash
-# vynl quickstart — guided first-time setup.
+# vynl quickstart — guided first-time setup, and a one-command updater.
 #
-# Creates .env from .env.example, fills in strong random secrets, prompts for
-# the values only you can choose (invite code, contact email, Discogs token,
-# host ports), then optionally builds and starts the stack with Docker Compose.
+# First-time setup: creates .env from .env.example, fills in strong random
+# secrets, prompts for the values only you can choose (invite code, contact
+# email, Discogs token, host ports), then optionally builds and starts the
+# stack with Docker Compose.
+#
+# Updating (--update): keeps the existing .env untouched, git pulls the latest
+# code, rebuilds the images, and recreates the stack (DB migrations run on
+# backend startup and are confirmed afterwards).
 #
 # Usage:
 #   scripts/quickstart.sh [--yes] [--no-start]
+#   scripts/quickstart.sh -u, --update [--no-pull] [--no-start] [--yes]
 #
-#   -y, --yes     accept the defaults for every prompt (no interaction)
-#       --no-start  write .env but do NOT run docker compose
+#   -y, --yes      accept the defaults for every prompt (no interaction)
+#       --no-start quickstart: write .env but do NOT run docker compose;
+#                  update: pull + build but do NOT restart the stack
+#       --no-pull  update: don't git pull (use the code already on disk)
+#   -u, --update   update an existing install (see above)
 #   -h, --help     show this help
 #
-# Interactive by default. In a non-interactive shell (no TTY) it uses the
-# defaults and does not start the stack unless --yes is given.
+# Interactive by default. In a non-interactive shell (no TTY) the quickstart
+# uses the defaults and does not start the stack unless --yes is given;
+# `--update` carries out every step (each piece is skippable with --no-pull /
+# --no-start, or by answering no to the per-step prompts).
 #
-# Requires: Docker with the Compose plugin.
+# Requires: Docker with the Compose plugin. --update additionally uses curl
+# only for the post-restart health check (skipped when curl is missing).
 #
 # Environment overrides (mostly for testing/automation):
 #   QUICKSTART_ENV_FILE   path to the .env to write (default <repo>/.env)
 #   QUICKSTART_FORCE      set to 1 to overwrite an existing .env without a backup
+#   QUICKSTART_UPDATE_TIMEOUT
+#                         seconds to wait for backend health before warning
+#                         during --update (default 60)
 
 set -euo pipefail
 
@@ -30,28 +45,39 @@ OVERRIDE_FILE="$ROOT/docker-compose.override.yml"
 
 ASSUME_YES=0
 NO_START=0
+NO_PULL=0
+UPDATE=0
 INTERACTIVE=0
 if [ -t 0 ]; then INTERACTIVE=1; fi
 
 usage() {
   cat <<'EOF'
-vynl quickstart — guided first-time setup.
+vynl quickstart — guided first-time setup and one-command updater.
 
-Creates .env from .env.example, fills in strong random secrets, prompts for the
-values only you can choose (invite code, contact email, Discogs token, host
-ports), then optionally builds and starts the stack with Docker Compose.
+First-time setup: creates .env from .env.example, fills in strong random
+secrets, prompts for the values only you can choose (invite code, contact
+email, Discogs token, host ports), then optionally builds + starts the stack.
+
+Updating (--update): keeps the current .env, git pulls the latest code,
+rebuilds the images, and recreates the stack (DB migrations run on backend
+startup and are confirmed afterwards).
 
 Usage:
   scripts/quickstart.sh [--yes] [--no-start]
+  scripts/quickstart.sh -u|--update [--no-pull] [--no-start] [--yes]
 
   -y, --yes      accept the defaults for every prompt (no interaction)
-      --no-start write .env but do NOT run docker compose
+      --no-start quickstart: write .env only; update: pull + build, no restart
+      --no-pull  update: don't git pull
+  -u, --update   update an existing install
   -h, --help     show this help
 
-Interactive by default. In a non-interactive shell (no TTY) it uses the
-defaults and does not start the stack unless --yes is given.
+Interactive by default. In a non-interactive shell (no TTY) the quickstart
+uses the defaults; --update carries out every step (skip pieces with
+--no-pull / --no-start / answering no to the prompts).
 
-Requires: Docker with the Compose plugin.
+Requires: Docker with the Compose plugin. --update uses curl when available
+for the post-restart health check.
 EOF
   exit 0
 }
@@ -60,6 +86,8 @@ for arg in "$@"; do
   case "$arg" in
     -y|--yes) ASSUME_YES=1 ;;
     --no-start) NO_START=1 ;;
+    --no-pull) NO_PULL=1 ;;
+    -u|--update) UPDATE=1 ;;
     -h|--help) usage ;;
     *) echo "Unknown option: $arg (try --help)" >&2; exit 2 ;;
   esac
@@ -107,6 +135,126 @@ set_var() {
   ' "$ENV_FILE" > "$ENV_FILE.tmp"
   mv "$ENV_FILE.tmp" "$ENV_FILE"
 }
+
+# --- confirm_yes <question> <default: yes|no> ---------------------------------
+# Returns 0 on yes. Non-interactive runs fall through to the given default;
+# `--yes` always returns yes.
+confirm_yes() {
+  local q="$1" d="${2:-yes}" ans=""
+  [ "$ASSUME_YES" = 1 ] && return 0
+  if [ "$INTERACTIVE" = 1 ]; then
+    local suffix="[y/N]"; [ "$d" = "yes" ] && suffix="[Y/n]"
+    read -r -p "$q $suffix " ans || true
+    case "$ans" in
+      [yY]|[yY][eE][sS]) return 0 ;;
+      [nN]|[nN][oO]) return 1 ;;
+      *) [ "$d" = "yes" ] && return 0 || return 1 ;;
+    esac
+  fi
+  [ "$d" = "yes" ] && return 0 || return 1
+}
+
+# --- update mode (--update): keep .env, pull, rebuild, restart, migrate -------
+if [ "$UPDATE" = 1 ]; then
+  head_ "vynl update"
+  say "Updating an existing install. Your .env and data volumes are kept as-is."
+
+  if ! command -v docker >/dev/null 2>&1; then
+    say "ERROR: docker was not found on your PATH." >&2
+    say "Install Docker (with the Compose plugin): https://docs.docker.com/engine/install/" >&2
+    exit 1
+  fi
+  if ! docker compose version >/dev/null 2>&1; then
+    say "ERROR: the 'docker compose' plugin was not found." >&2
+    say "Install Docker Compose v2: https://docs.docker.com/compose/install/" >&2
+    exit 1
+  fi
+  if [ ! -f "$ENV_FILE" ]; then
+    say "ERROR: $ENV_FILE not found — run the quickstart first to create one." >&2
+    exit 1
+  fi
+  api_port=""
+
+  # --- pull -------------------------------------------------------------------
+  if [ "$NO_PULL" = 1 ]; then
+    note "Skipping 'git pull' (--no-pull)."
+  elif [ ! -d "$ROOT/.git" ]; then
+    note "This is not a git checkout of the repo — skipping 'git pull'."
+  elif confirm_yes "Pull the latest changes from git?" yes; then
+    head_ "Pulling latest changes"
+    say "  git -C $(printf '%q' "$ROOT") pull --ff-only"
+    if ! git -C "$ROOT" pull --ff-only; then
+      say "ERROR: 'git pull' failed (check your remote/credentials or uncommitted"
+      say "local changes). Resolve it, then re-run: scripts/quickstart.sh --update" >&2
+      exit 1
+    fi
+  else
+    note "Skipping 'git pull'."
+  fi
+
+  # --- build ------------------------------------------------------------------
+  if confirm_yes "Rebuild the images (docker compose build --pull)?" yes; then
+    head_ "Building images (this can take a few minutes)"
+    ( cd "$ROOT" && docker compose build --pull )
+  else
+    note "Skipping the image build."
+  fi
+
+  # --- restart + migrations ---------------------------------------------------
+  if [ "$NO_START" = 1 ]; then
+    note "Leaving the stack as-is (--no-start)."
+  elif confirm_yes "Restart the compose stack now?" yes; then
+    head_ "Recreating the stack"
+    ( cd "$ROOT" && docker compose up -d )
+
+    healthy=0
+    backend_id="$(cd "$ROOT" && docker compose ps -q backend 2>/dev/null | head -1 || true)"
+    if [ -n "$backend_id" ]; then
+      api_port="$(docker port "$backend_id" 8000/tcp 2>/dev/null | sed -n 's/.*://p' | head -1 || true)"
+    fi
+    if [ -n "$api_port" ] && command -v curl >/dev/null 2>&1; then
+      head_ "Waiting for the backend (migrations run on startup)"
+      deadline=$((SECONDS + ${QUICKSTART_UPDATE_TIMEOUT:-60}))
+      while [ "$SECONDS" -lt "$deadline" ]; do
+        if curl -fsS "http://localhost:$api_port/api/health" 2>/dev/null | grep -q '"ok"'; then
+          healthy=1; break
+        fi
+        sleep 2
+      done
+      if [ "$healthy" = 1 ]; then
+        say "Backend healthy at http://localhost:$api_port/api/health"
+      else
+        say "WARNING: backend did not answer /api/health within ${QUICKSTART_UPDATE_TIMEOUT:-60}s." >&2
+        say "         Check: docker compose logs backend" >&2
+      fi
+    fi
+
+    if [ "$healthy" = 1 ]; then
+      head_ "Confirming database migrations"
+      if ( cd "$ROOT" && docker compose exec -T backend alembic upgrade head ); then
+        say "Database is at the latest migration head."
+      else
+        say "WARNING: could not confirm the migration head (see: docker compose logs backend)." >&2
+      fi
+    fi
+
+    head_ "Stack status"
+    ( cd "$ROOT" && docker compose ps )
+  else
+    note "Skipping the restart."
+  fi
+
+  head_ "Update complete"
+  say "  Status:  docker compose ps"
+  if [ -n "$api_port" ]; then
+    say "  Health:  curl http://localhost:$api_port/api/health"
+  fi
+  say "  Logs:    docker compose logs -f backend"
+  say ""
+  say "If the update changed .env.example, review it for new optional config keys"
+  say "and add any you want to customize to .env, then: docker compose up -d"
+  exit 0
+fi
 
 # --- prerequisites -----------------------------------------------------------
 head_ "vynl quickstart"

@@ -136,7 +136,21 @@ curl http://localhost:8080/api/health   # {"status":"ok"}
 
 The images are built from the source in this repo, so updating means pulling the
 latest code and rebuilding. Your library lives in the named volumes (`db_data`,
-`covers_data`) and survives restarts and rebuilds.
+`covers_data`) and survives restarts and rebuilds — and your `.env` is left
+untouched.
+
+Simplest way: the quickstart script has an update mode that keeps your current
+`.env`, pulls the latest code, rebuilds the images, and recreates the stack.
+It waits for the backend health check and confirms the DB is at the latest
+migration head. Each step prompts first (or pass `-y` to run them all):
+
+```bash
+scripts/quickstart.sh --update        # review repo changes on pull, confirm steps
+scripts/quickstart.sh --update -y     # pull + rebuild + restart non-interactively
+scripts/quickstart.sh --update --no-pull --no-start   # just build, don't touch the stack
+```
+
+By hand, the same recipe:
 
 ```bash
 git pull                          # or: git pull origin main
@@ -151,6 +165,11 @@ docker compose build --pull
 docker compose up -d
 ```
 
+> `--update` runs `git pull` automatically. If you've made local changes or want
+> to review before pulling, run `git pull` yourself and add `--no-pull` (useful
+> on machines where the repo isn't a git checkout either — update then just
+> rebuilds and restarts).
+
 Everyday commands:
 
 ```bash
@@ -161,7 +180,8 @@ docker compose down -v            # stop and DELETE the volumes — destructive
 ```
 
 The backend applies any new Alembic migrations automatically on startup, so no
-manual DB step is needed.
+manual DB step is needed (update mode also confirms the migration head after
+restarting).
 
 > **Prebuilt images (optional).** CI publishes images to GHCR on every push to
 > `main` (`ghcr.io/tylern4/vynl/backend:latest` and `.../frontend:latest`). To run
