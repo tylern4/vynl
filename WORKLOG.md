@@ -922,3 +922,19 @@ shipped, decisions made, anything the next agent needs to know.
   `npm run build` ✓. PLAN §4/§5/§6 + ISSUES.md updated; issue #14 marked done.
   Note: PLAN's raw-bytes-PUT cover-upload text still reflects pre-multipart #11 —
   left as a known doc drift.
+
+## 2026-10-10 — Discogs live check added to smoke script — coordinator
+
+- `scripts/smoke.sh` gained a live **Discogs** check (the old script only covered
+  MusicBrainz/Deezer): when a `DISCOGS_TOKEN` exists in `.env`, it asserts the
+  merged search's `X-Search-Degraded` header never names `discogs`, imports a
+  Discogs release (a `source=="discogs"` search row when present, else the known
+  id `249504` — Remain in Light) — accepting 201 or the 409 already-on-shelf
+  path — and verifies the detail's tracklist resolves. Skipped automatically
+  when no token is configured.
+- Motivation: the unit suite covers the enabled/disabled paths with mocked HTTP,
+  but the only repeatable *live* Discogs verification was manual. Confirmed the
+  integration against the real API before wiring it in (search + `fetch_album`
+  with the repo `.env` token both work).
+- Committed alongside the #14 work; the full smoke script still runs locally only
+  (never CI).

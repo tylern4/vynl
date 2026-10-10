@@ -4,9 +4,10 @@
 # Runs a live end-to-end pass against a running `docker compose up` stack:
 # health → register+login → external search → real album import → cover bytes →
 # tags → play log → recommendations → library track search → frontend shell +
-# proxied /api/health and a binary cover through nginx.
+# proxied /api/health and a binary cover through nginx. When a DISCOGS_TOKEN is
+# configured, an extra live Discogs check (import + tracklist) runs after search.
 #
-# LOCAL-ONLY by design: it calls the live MusicBrainz/Deezer APIs, so it is
+# LOCAL-ONLY by design: it calls the live MusicBrainz/Deezer/Discogs APIs, so it is
 # intentionally NOT wired into CI (results vary with the networks / rate limits).
 #
 # Usage:
@@ -112,7 +113,7 @@ AUTH=(-H "Authorization: Bearer $TOKEN")
 
 # --- 3. external search -------------------------------------------------------
 echo "[3/9] external search + import (live MusicBrainz + Deezer)"
-curl -sS -o "$TMP/search.json" "${AUTH[@]}" "$API_URL/search/albums?q=$(jq -nr --arg v "$SEARCH_Q" '$v|@uri')&limit=5"
+curl -sS -D "$TMP/search.headers" -o "$TMP/search.json" "${AUTH[@]}" "$API_URL/search/albums?q=$(jq -nr --arg v "$SEARCH_Q" '$v|@uri')&limit=5"
 n="$(jget 'length' "$TMP/search.json")"
 ok=0; [ "$n" -gt 0 ] 2>/dev/null && ok=1
 check "GET /search/albums -> $n results" $((ok ? 0 : 1))
@@ -143,6 +144,47 @@ else
   check "POST /albums/import -> 201" 1
 fi
 [ -n "$ALBUM_ID" ] && [ "$ALBUM_ID" != "null" ] || { echo "  ERROR: no album id"; exit 1; }
+
+# --- 3b. Discogs provider (live, only when a token is configured) ------------
+HAS_DISCOGS=0
+grep -qE '^DISCOGS_TOKEN=.+' "$ROOT/.env" 2>/dev/null && HAS_DISCOGS=1
+if [ "$HAS_DISCOGS" = "1" ]; then
+  echo "[3b/9] Discogs provider (live, token configured)"
+  # The merged search answered above must not have degraded Discogs.
+  degraded="$(tr -d '\r' < "$TMP/search.headers" \
+    | awk -F': ' 'tolower($1)=="x-search-degraded"{sub(/^ +/,"",$2); print $2}' \
+    | paste -sd, -)"
+  ok=0
+  if ! echo ",$degraded," | grep -q ",discogs,"; then ok=1; fi
+  check "X-Search-Degraded does not name discogs (got: ${degraded:-none})" $((ok ? 0 : 1))
+
+  # Import a Discogs release: a discogs row from the search when present, else a
+  # well-known id (Talking Heads — Remain in Light, 1980).
+  DISCOGS_EXT="$(jget 'map(select(.source=="discogs")) | .[0].external_id // empty' "$TMP/search.json")"
+  [ -n "$DISCOGS_EXT" ] || DISCOGS_EXT="249504"
+  code="$(curl -sS -o "$TMP/discogs.json" -w '%{http_code}' "${AUTH[@]}" -X POST "$API_URL/albums/import" \
+    -H 'Content-Type: application/json' -d "{\"source\":\"discogs\",\"external_id\":\"$DISCOGS_EXT\"}")"
+  if [ "$code" = "201" ]; then
+    DID="$(jget .id "$TMP/discogs.json")"
+    check "POST /albums/import discogs:$DISCOGS_EXT -> 201 (id=$DID)" 0
+  elif [ "$code" = "409" ]; then
+    DID="$(jget .detail "$TMP/discogs.json" | sed -n 's/.*id=\([0-9]*\).*/\1/p')"
+    ok=0; [ -n "$DID" ] && [ "$DID" -gt 0 ] 2>/dev/null && ok=1
+    check "POST /albums/import discogs:$DISCOGS_EXT -> 409 (already on shelf)" $((ok ? 0 : 1))
+  else
+    DID=""
+    echo "  ERROR: discogs import returned HTTP $code: $(cat "$TMP/discogs.json")"
+    check "POST /albums/import discogs:$DISCOGS_EXT" 1
+  fi
+  if [ -n "$DID" ] && [ "$DID" != "null" ]; then
+    curl -sS -o "$TMP/discogs_album.json" "${AUTH[@]}" "$API_URL/albums/$DID"
+    dn="$(jget '.tracks | length' "$TMP/discogs_album.json")"
+    ok=0; [ "$dn" -gt 0 ] 2>/dev/null && ok=1
+    check "GET /albums/$DID (discogs) -> $dn tracks" $((ok ? 0 : 1))
+  fi
+else
+  echo "[3b/9] Discogs skipped (no DISCOGS_TOKEN in .env)"
+fi
 
 # --- 4. album detail + tracks ------------------------------------------------
 echo "[4/9] album detail + tracklist"
